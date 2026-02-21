@@ -8,7 +8,7 @@
 
 `580+ Items` · `Recipe-Based Pricing` · `Full Controller Support`
 
-[![Version](https://img.shields.io/badge/Version-1.0.5-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.6-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
 [![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#-requirements)
 [![Items](https://img.shields.io/badge/Items-580+-green?style=for-the-badge)](#)
 
@@ -298,6 +298,7 @@ RARITY_OVERRIDES = {'Chain': 1.8}
 
 | Version | Changes |
 |:---:|:---|
+| **1.0.6** | Updated UI design · Updated price generator script · Updated config files · Various bug fixes |
 | **1.0.5** | Added JsonDotNET and CurrencyPocket as required dependencies |
 | **1.0.4** | Updated dependency configuration |
 | **1.0.3** | Added capes to buy menu |
