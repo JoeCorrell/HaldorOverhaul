@@ -10,6 +10,7 @@ namespace HaldorOverhaul
 
         internal static void SetTraderUI(TraderUI ui) => _traderUI = ui;
         internal static void SetBankUI(BankUI ui) => _bankUI = ui;
+        internal static TraderUI GetTraderUI() => _traderUI;
 
         /// <summary>
         /// Intercept StoreGui.Show — prevent vanilla UI, show our custom UI instead.
@@ -82,6 +83,43 @@ namespace HaldorOverhaul
                 return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Register console commands after Terminal.InitTerminal so the command
+        /// dictionary isn't wiped out after registration.
+        /// </summary>
+        [HarmonyPatch(typeof(Terminal), "InitTerminal")]
+        [HarmonyPostfix]
+        private static void Terminal_InitTerminal_Postfix()
+        {
+            new Terminal.ConsoleCommand("setbankbalance",
+                "Set Haldor's bank balance. Usage: setbankbalance <amount>  or  setbankbalance = <amount>",
+                (Terminal.ConsoleEventArgs args) =>
+                {
+                    string raw = null;
+                    if (args.Length >= 3 && args[1] == "=") raw = args[2];
+                    else if (args.Length >= 2 && args[1] != "=") raw = args[1];
+
+                    if (!int.TryParse(raw, out int amount) || amount < 0)
+                    {
+                        args.Context.AddString("Usage: setbankbalance <amount>");
+                        return;
+                    }
+
+                    var player = Player.m_localPlayer;
+                    if (player == null) { args.Context.AddString("No player found."); return; }
+
+                    int previous = 0;
+                    if (player.m_customData.TryGetValue("HaldorBank_Balance", out string prev))
+                        int.TryParse(prev, out previous);
+
+                    player.m_customData["HaldorBank_Balance"] = amount.ToString();
+                    GetTraderUI()?.ReloadBankBalance();
+
+                    ((Character)player).Message(MessageHud.MessageType.Center, $"Bank balance set to {amount:N0}");
+                    args.Context.AddString($"Bank balance set to {amount:N0} (was {previous:N0})");
+                });
         }
 
         /// <summary>

@@ -13,7 +13,6 @@ namespace HaldorOverhaul
     public static class TextureLoader
     {
         private static readonly Dictionary<string, Texture2D> Cache = new Dictionary<string, Texture2D>();
-        private static readonly Dictionary<string, Sprite> SpriteCache = new Dictionary<string, Sprite>();
         private static readonly Assembly ModAssembly = Assembly.GetExecutingAssembly();
 
         private static readonly MethodInfo LoadImageMethod = ResolveLoadImage();

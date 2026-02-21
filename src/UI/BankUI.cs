@@ -20,6 +20,7 @@ namespace HaldorOverhaul
         private TMP_Text _titleText;
         private TMP_Text _bankBalanceText;
         private TMP_Text _inventoryCoinsText;
+        private TMP_Text _totalWealthText;
         private TMP_Text _statusText;
 
         // ── Buttons ──
@@ -237,25 +238,34 @@ namespace HaldorOverhaul
             CreateSeparator(content, -48f);
 
             // ── Bank Balance ──
-            _bankBalanceText = CreateText(content, "BankBalance", "Bank Balance: 0", 24f, GoldTextColor, TextAlignmentOptions.Center);
+            _bankBalanceText = CreateText(content, "BankBalance", "Bank Balance: 0", 26f, GoldTextColor, TextAlignmentOptions.Center);
             var bbRT = _bankBalanceText.GetComponent<RectTransform>();
             bbRT.anchorMin = new Vector2(0f, 1f);
             bbRT.anchorMax = new Vector2(1f, 1f);
             bbRT.pivot = new Vector2(0.5f, 1f);
-            bbRT.sizeDelta = new Vector2(0f, 34f);
+            bbRT.sizeDelta = new Vector2(0f, 36f);
             bbRT.anchoredPosition = new Vector2(0f, -64f);
 
             // ── Inventory Coins ──
-            _inventoryCoinsText = CreateText(content, "InventoryCoins", "Inventory Coins: 0", 19f, new Color(0.85f, 0.85f, 0.85f), TextAlignmentOptions.Center);
+            _inventoryCoinsText = CreateText(content, "InventoryCoins", "Inventory Coins: 0", 20f, new Color(0.85f, 0.85f, 0.85f), TextAlignmentOptions.Center);
             var icRT = _inventoryCoinsText.GetComponent<RectTransform>();
             icRT.anchorMin = new Vector2(0f, 1f);
             icRT.anchorMax = new Vector2(1f, 1f);
             icRT.pivot = new Vector2(0.5f, 1f);
             icRT.sizeDelta = new Vector2(0f, 28f);
-            icRT.anchoredPosition = new Vector2(0f, -102f);
+            icRT.anchoredPosition = new Vector2(0f, -104f);
+
+            // ── Total Wealth ──
+            _totalWealthText = CreateText(content, "TotalWealth", "Total Wealth: 0", 16f, new Color(0.58f, 0.58f, 0.58f), TextAlignmentOptions.Center);
+            var twRT = _totalWealthText.GetComponent<RectTransform>();
+            twRT.anchorMin = new Vector2(0f, 1f);
+            twRT.anchorMax = new Vector2(1f, 1f);
+            twRT.pivot = new Vector2(0.5f, 1f);
+            twRT.sizeDelta = new Vector2(0f, 22f);
+            twRT.anchoredPosition = new Vector2(0f, -136f);
 
             // ── Separator before buttons ──
-            CreateSeparator(content, -142f);
+            CreateSeparator(content, -164f);
 
             // ── Status text (feedback) ──
             _statusText = CreateText(content, "Status", "", 16f, new Color(0.7f, 0.7f, 0.7f), TextAlignmentOptions.Center);
@@ -394,8 +404,13 @@ namespace HaldorOverhaul
             if (coinDrop == null) return;
 
             int amount = _bankBalance;
-            inv.AddItem("Coins", amount, coinDrop.m_itemData.m_quality,
+            var added = inv.AddItem("Coins", amount, coinDrop.m_itemData.m_quality,
                 coinDrop.m_itemData.m_variant, 0L, "");
+            if (added == null)
+            {
+                SetStatus("Inventory full!");
+                return;
+            }
             _bankBalance = 0;
             SaveBalance();
             RefreshDisplay();
@@ -409,12 +424,14 @@ namespace HaldorOverhaul
 
         private void RefreshDisplay()
         {
+            int invCoins = GetInventoryCoins();
+
             if (_bankBalanceText != null)
                 _bankBalanceText.text = $"Bank Balance: {_bankBalance:N0}";
-
-            int invCoins = GetInventoryCoins();
             if (_inventoryCoinsText != null)
                 _inventoryCoinsText.text = $"Inventory Coins: {invCoins:N0}";
+            if (_totalWealthText != null)
+                _totalWealthText.text = $"Total Wealth: {(_bankBalance + invCoins):N0}";
 
             if (_depositButton != null)
                 _depositButton.interactable = invCoins > 0;

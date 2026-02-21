@@ -63,6 +63,7 @@ namespace HaldorOverhaul
         private GameObject _bankContentPanel;
         private TMP_Text _bankBalanceText;
         private TMP_Text _bankInvCoinsText;
+        private TMP_Text _bankTotalText;
         private TMP_Text _bankStatusText;
         private Button _bankDepositButton;
         private Button _bankWithdrawButton;
@@ -139,9 +140,11 @@ namespace HaldorOverhaul
 
         // ── Inventory tracking ──
         private int _lastInventoryHash;
+        private int _lastCoinDisplayCount = -1;
+        private int _lastBankBalanceDisplay = -1;
+        private int _lastBankInvCoinsDisplay = -1;
 
         // ── VisEquipment cache ──
-        private static System.Reflection.FieldInfo[] _visEquipHashFields;
         private Dictionary<string, string> _savedEquipSlots;
 
         // ── Inner data classes ──
@@ -190,11 +193,16 @@ namespace HaldorOverhaul
             _searchFilter = "";
             if (_searchInput != null) _searchInput.text = "";
             _lastInventoryHash = 0;
+            _lastCoinDisplayCount = -1;
+            _lastBankBalanceDisplay = -1;
+            _lastBankInvCoinsDisplay = -1;
 
             SetupPlayerPreview();
             SetupHaldorPreview();
             _previewRotation = 0f;
             EnablePreviewCameras();
+
+            LoadBankBalance(); // load before coin display and buy affordability checks
 
             BuildBuyEntries();
             BuildSellEntries();
@@ -344,11 +352,17 @@ namespace HaldorOverhaul
                 if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
             }
 
-            // Left/right to switch tabs
+            // Left/right — navigate bank buttons when on bank tab, otherwise switch tabs
             if (ZInput.GetButtonDown("JoyLStickLeft") || ZInput.GetButtonDown("JoyDPadLeft"))
-                SwitchTab(Mathf.Max(0, _activeTab - 1));
+            {
+                if (_activeTab == 2) { _bankFocusedButton = 0; UpdateBankHighlight(); }
+                else SwitchTab(Mathf.Max(0, _activeTab - 1));
+            }
             if (ZInput.GetButtonDown("JoyLStickRight") || ZInput.GetButtonDown("JoyDPadRight"))
-                SwitchTab(Mathf.Min(2, _activeTab + 1));
+            {
+                if (_activeTab == 2) { _bankFocusedButton = 1; UpdateBankHighlight(); }
+                else SwitchTab(Mathf.Min(2, _activeTab + 1));
+            }
 
             // A = buy/sell or bank action
             if (ZInput.GetButtonDown("JoyButtonA"))
@@ -718,7 +732,7 @@ namespace HaldorOverhaul
             coinGO.transform.SetParent(_middleColumn, false);
             _coinDisplayText = coinGO.AddComponent<TextMeshProUGUI>();
             if (_valheimFont != null) _coinDisplayText.font = _valheimFont;
-            _coinDisplayText.fontSize = 18f;
+            _coinDisplayText.fontSize = 24f;
             _coinDisplayText.color = GoldTextColor;
             _coinDisplayText.alignment = TextAlignmentOptions.Center;
             _coinDisplayText.text = "Coins: 0";
@@ -1638,12 +1652,7 @@ namespace HaldorOverhaul
                             string raw = ItemDrop.ItemData.GetTooltip(drop.m_itemData, 1, true, Game.m_worldLevel, e.Stack);
                             tooltipText = Localize(raw);
                         }
-                        var sb = new StringBuilder();
-                        sb.Append(tooltipText);
-                        sb.Append($"\n\n<color=#D4A24E>Cost: {e.Price} coins");
-                        if (e.Stack > 1) sb.Append($"  ×{e.Stack}");
-                        sb.Append("</color>");
-                        _itemDescText.text = sb.ToString();
+                        _itemDescText.text = tooltipText;
                         _itemDescText.ForceMeshUpdate();
                         LayoutRebuilder.ForceRebuildLayoutImmediate(_itemDescText.rectTransform);
                     }
@@ -1651,7 +1660,7 @@ namespace HaldorOverhaul
 
                     if (_actionButton != null)
                     {
-                        int coins = GetPlayerCoins();
+                        int coins = GetBankBalance();
                         _actionButton.interactable = coins >= e.Price;
                         if (_actionButtonLabel != null)
                             _actionButtonLabel.text = coins >= e.Price ? $"Buy ({e.Price})" : $"Need {e.Price} coins";
@@ -1677,11 +1686,7 @@ namespace HaldorOverhaul
                             string raw = ItemDrop.ItemData.GetTooltip(e.Item, e.Item.m_quality, false, Game.m_worldLevel);
                             tooltipText = Localize(raw);
                         }
-                        var sb = new StringBuilder();
-                        sb.Append(tooltipText);
-                        sb.Append($"\n\n<color=#D4A24E>Sell {e.ConfigStack} for {e.Price} coins</color>");
-                        sb.Append($"\n<color=#AAAAAA>In inventory: {e.Item?.m_stack ?? 0}</color>");
-                        _itemDescText.text = sb.ToString();
+                        _itemDescText.text = tooltipText + $"\n\n<color=#AAAAAA>In inventory: {e.Item?.m_stack ?? 0}</color>";
                         _itemDescText.ForceMeshUpdate();
                         LayoutRebuilder.ForceRebuildLayoutImmediate(_itemDescText.rectTransform);
                     }
@@ -1733,30 +1738,27 @@ namespace HaldorOverhaul
             var inv = ((Humanoid)player).GetInventory();
             if (inv == null || _currentStoreGui == null) return;
 
-            string coinName = _currentStoreGui.m_coinPrefab?.m_itemData?.m_shared?.m_name;
-            if (string.IsNullOrEmpty(coinName)) return;
-
-            int coins = inv.CountItems(coinName);
-            if (coins < entry.Price)
+            if (_bankBalance < entry.Price)
             {
-                ((Character)player).Message(MessageHud.MessageType.Center, "Not enough coins!");
+                ((Character)player).Message(MessageHud.MessageType.Center, "Not enough coins in bank!");
                 return;
             }
 
-            inv.RemoveItem(coinName, entry.Price);
+            _bankBalance -= entry.Price;
+            SaveBankBalance();
+
             var added = inv.AddItem(entry.PrefabName, entry.Stack, 1, 0, 0L, "");
             if (added == null)
             {
-                // Refund
-                string coinPrefabName = _currentStoreGui.m_coinPrefab.gameObject.name;
-                inv.AddItem(coinPrefabName, entry.Price, _currentStoreGui.m_coinPrefab.m_itemData.m_quality,
-                    _currentStoreGui.m_coinPrefab.m_itemData.m_variant, 0L, "");
+                // Refund back to bank
+                _bankBalance += entry.Price;
+                SaveBankBalance();
                 ((Character)player).Message(MessageHud.MessageType.Center, "Inventory full!");
                 return;
             }
 
-            if (_currentStoreGui.m_buyEffects != null)
-                _currentStoreGui.m_buyEffects.Create(_currentStoreGui.transform.position, Quaternion.identity);
+            if (_currentStoreGui.m_sellEffects != null)
+                _currentStoreGui.m_sellEffects.Create(_currentStoreGui.transform.position, Quaternion.identity);
 
             string msg = entry.Stack > 1 ? $"Bought {entry.Stack} {entry.Name}" : $"Bought {entry.Name}";
             ((Character)player).Message(MessageHud.MessageType.TopLeft, $"{msg} for {entry.Price} coins", 0, entry.Icon);
@@ -1787,14 +1789,14 @@ namespace HaldorOverhaul
 
             int prevIndex = _selectedSellIndex;
 
+            // Deposit sale price directly into bank (always succeeds), then remove item
+            _bankBalance += entry.Price;
+            SaveBankBalance();
+
             if (entry.Item.m_stack <= entry.ConfigStack)
                 inv.RemoveItem(entry.Item);
             else
                 entry.Item.m_stack -= entry.ConfigStack;
-
-            string coinPrefabName = _currentStoreGui.m_coinPrefab.gameObject.name;
-            inv.AddItem(coinPrefabName, entry.Price, _currentStoreGui.m_coinPrefab.m_itemData.m_quality,
-                _currentStoreGui.m_coinPrefab.m_itemData.m_variant, 0L, "");
 
             if (_currentStoreGui.m_sellEffects != null)
                 _currentStoreGui.m_sellEffects.Create(_currentStoreGui.transform.position, Quaternion.identity);
@@ -1815,7 +1817,10 @@ namespace HaldorOverhaul
         private void UpdateCoinDisplay()
         {
             if (_coinDisplayText == null) return;
-            _coinDisplayText.text = $"Coins: {GetPlayerCoins()}";
+            int coins = GetBankBalance();
+            if (coins == _lastCoinDisplayCount) return;
+            _lastCoinDisplayCount = coins;
+            _coinDisplayText.text = $"Bank: {coins:N0}";
         }
 
         // ══════════════════════════════════════════
@@ -1965,23 +1970,6 @@ namespace HaldorOverhaul
             }
         }
 
-        private void ResetVisEquipHashes(VisEquipment visEquip)
-        {
-            if (_visEquipHashFields == null)
-            {
-                var allFields = AccessTools.GetDeclaredFields(typeof(VisEquipment));
-                var hashList = new List<System.Reflection.FieldInfo>();
-                foreach (var f in allFields)
-                {
-                    if (f.FieldType == typeof(int) && f.Name.StartsWith("m_current") && f.Name.Contains("Hash"))
-                        hashList.Add(f);
-                }
-                _visEquipHashFields = hashList.ToArray();
-            }
-            foreach (var field in _visEquipHashFields)
-                field.SetValue(visEquip, -1);
-        }
-
         private void UpdatePlayerPreviewRotation()
         {
             // Begin drag when mouse button pressed over the player preview image
@@ -2075,15 +2063,6 @@ namespace HaldorOverhaul
             if (_haldorClone != null) { Destroy(_haldorClone); _haldorClone = null; }
         }
 
-        private void UpdateHaldorCamera()
-        {
-            if (_haldorCamGO == null) return;
-            Vector3 center = HaldorSpawnPos + Vector3.up * 0.9f;
-            float rad = _previewRotation * Mathf.Deg2Rad;
-            Vector3 offset = new Vector3(Mathf.Sin(rad), 0.3f, Mathf.Cos(rad)) * 5.0f;
-            _haldorCamGO.transform.position = center + offset;
-            _haldorCamGO.transform.LookAt(center);
-        }
 
         // ══════════════════════════════════════════
         //  SHARED PREVIEW HELPERS
@@ -2272,14 +2251,18 @@ namespace HaldorOverhaul
             return zs.GetGlobalKey(key);
         }
 
-        private int GetPlayerCoins()
+        private int GetBankBalance() => _bankBalance;
+
+        /// <summary>
+        /// Reloads the bank balance from m_customData and refreshes any visible displays.
+        /// Call this after externally modifying the bank balance (e.g. from a console command).
+        /// </summary>
+        public void ReloadBankBalance()
         {
-            var player = Player.m_localPlayer;
-            if (player == null || _currentStoreGui == null) return 0;
-            var inv = ((Humanoid)player).GetInventory();
-            string coinName = _currentStoreGui.m_coinPrefab?.m_itemData?.m_shared?.m_name;
-            if (inv == null || string.IsNullOrEmpty(coinName)) return 0;
-            return inv.CountItems(coinName);
+            LoadBankBalance();
+            if (!IsVisible) return;
+            UpdateCoinDisplay();
+            RefreshBankDisplay();
         }
 
         private static int CalculateInventoryHash(List<ItemDrop.ItemData> items)
@@ -2305,6 +2288,7 @@ namespace HaldorOverhaul
             int hash = CalculateInventoryHash(inv.GetAllItems());
             if (hash != _lastInventoryHash)
             {
+                _lastInventoryHash = hash;
                 BuildSellEntries();
                 if (_activeTab == 1) PopulateCurrentList();
             }
@@ -2333,7 +2317,7 @@ namespace HaldorOverhaul
 
         private void BuildBankPanel()
         {
-            // Full-size panel that replaces the 3 columns when bank tab is active
+            // Full-size panel replacing the 3 columns when bank tab is active
             _bankContentPanel = new GameObject("BankContent", typeof(RectTransform), typeof(Image));
             _bankContentPanel.transform.SetParent(_mainPanel.transform, false);
             var rt = _bankContentPanel.GetComponent<RectTransform>();
@@ -2341,61 +2325,65 @@ namespace HaldorOverhaul
             rt.anchorMax = Vector2.one;
             rt.offsetMin = new Vector2(OuterPad, _bottomPad);
             rt.offsetMax = new Vector2(-OuterPad, -_colTopInset);
-            var img = _bankContentPanel.GetComponent<Image>();
-            img.sprite = null;
-            img.color = new Color(0.22f, 0.10f, 0.04f, 0.65f);
+            ApplyPanelStyle(_bankContentPanel.GetComponent<Image>());
 
-            // Title
-            var title = CreateBankText(_bankContentPanel.transform, "BankTitle", "Haldor's Bank", 28f, GoldTextColor);
+            var p = _bankContentPanel.transform;
+
+            // ── Title ──
+            var title = CreateBankText(p, "BankTitle", "Haldor's Bank", 28f, GoldTextColor);
             var titleRT = title.GetComponent<RectTransform>();
-            titleRT.anchorMin = new Vector2(0f, 1f);
-            titleRT.anchorMax = new Vector2(1f, 1f);
+            titleRT.anchorMin = new Vector2(0f, 1f); titleRT.anchorMax = new Vector2(1f, 1f);
             titleRT.pivot = new Vector2(0.5f, 1f);
-            titleRT.sizeDelta = new Vector2(0f, 40f);
-            titleRT.anchoredPosition = new Vector2(0f, -16f);
+            titleRT.sizeDelta = new Vector2(0f, 38f);
+            titleRT.anchoredPosition = new Vector2(0f, -14f);
 
-            // Separator
-            CreateBankSeparator(_bankContentPanel.transform, -62f);
+            // ── Separator 1 ──
+            CreateBankSeparator(p, -58f);
 
-            // Bank balance
-            _bankBalanceText = CreateBankText(_bankContentPanel.transform, "BankBalance", "Bank Balance: 0", 26f, GoldTextColor);
+            // ── Bank Balance ──
+            _bankBalanceText = CreateBankText(p, "BankBalance", "Bank Balance: 0", 26f, GoldTextColor);
             var bbRT = _bankBalanceText.GetComponent<RectTransform>();
-            bbRT.anchorMin = new Vector2(0f, 1f);
-            bbRT.anchorMax = new Vector2(1f, 1f);
+            bbRT.anchorMin = new Vector2(0f, 1f); bbRT.anchorMax = new Vector2(1f, 1f);
             bbRT.pivot = new Vector2(0.5f, 1f);
             bbRT.sizeDelta = new Vector2(0f, 36f);
-            bbRT.anchoredPosition = new Vector2(0f, -82f);
+            bbRT.anchoredPosition = new Vector2(0f, -74f);
 
-            // Inventory coins
-            _bankInvCoinsText = CreateBankText(_bankContentPanel.transform, "BankInvCoins", "Inventory Coins: 0", 20f, new Color(0.85f, 0.85f, 0.85f));
+            // ── Inventory Coins ──
+            _bankInvCoinsText = CreateBankText(p, "InvCoins", "Inventory Coins: 0", 20f, new Color(0.85f, 0.85f, 0.85f, 1f));
             var icRT = _bankInvCoinsText.GetComponent<RectTransform>();
-            icRT.anchorMin = new Vector2(0f, 1f);
-            icRT.anchorMax = new Vector2(1f, 1f);
+            icRT.anchorMin = new Vector2(0f, 1f); icRT.anchorMax = new Vector2(1f, 1f);
             icRT.pivot = new Vector2(0.5f, 1f);
-            icRT.sizeDelta = new Vector2(0f, 30f);
-            icRT.anchoredPosition = new Vector2(0f, -122f);
+            icRT.sizeDelta = new Vector2(0f, 28f);
+            icRT.anchoredPosition = new Vector2(0f, -118f);
 
-            // Separator before buttons
-            CreateBankSeparator(_bankContentPanel.transform, -166f);
+            // ── Total Wealth ──
+            _bankTotalText = CreateBankText(p, "BankTotal", "Total Wealth: 0", 16f, new Color(0.6f, 0.6f, 0.6f, 1f));
+            var twRT = _bankTotalText.GetComponent<RectTransform>();
+            twRT.anchorMin = new Vector2(0f, 1f); twRT.anchorMax = new Vector2(1f, 1f);
+            twRT.pivot = new Vector2(0.5f, 1f);
+            twRT.sizeDelta = new Vector2(0f, 22f);
+            twRT.anchoredPosition = new Vector2(0f, -152f);
 
-            // Status text
-            _bankStatusText = CreateBankText(_bankContentPanel.transform, "BankStatus", "", 17f, new Color(0.7f, 0.7f, 0.7f));
+            // ── Separator 2 ──
+            CreateBankSeparator(p, -180f);
+
+            // ── Buttons (symmetric about centre) ──
+            float btnH = Mathf.Max(_craftBtnHeight, 36f);
+            float btnW = 200f;
+            float gap  = 24f;
+
+            _bankDepositButton  = CreateBankButton(p, "BankDeposit",  "Deposit All",
+                -(btnW + gap / 2f), 12f, btnW, OnBankDeposit,  out _bankDepositSelected);
+            _bankWithdrawButton = CreateBankButton(p, "BankWithdraw", "Withdraw All",
+                gap / 2f,           12f, btnW, OnBankWithdraw, out _bankWithdrawSelected);
+
+            // ── Status text ──
+            _bankStatusText = CreateBankText(p, "BankStatus", "", 16f, new Color(0.65f, 0.62f, 0.50f, 1f));
             var stRT = _bankStatusText.GetComponent<RectTransform>();
-            stRT.anchorMin = new Vector2(0f, 0f);
-            stRT.anchorMax = new Vector2(1f, 0f);
+            stRT.anchorMin = new Vector2(0f, 0f); stRT.anchorMax = new Vector2(1f, 0f);
             stRT.pivot = new Vector2(0.5f, 0f);
-            stRT.sizeDelta = new Vector2(0f, 26f);
-            stRT.anchoredPosition = new Vector2(0f, 60f);
-
-            // Buttons
-            float btnW = 180f;
-            float gap = 20f;
-            float btnY = 16f;
-
-            _bankDepositButton = CreateBankButton(_bankContentPanel.transform, "BankDeposit", "Deposit All",
-                -(btnW + gap / 2f), btnY, btnW, OnBankDeposit, out _bankDepositSelected);
-            _bankWithdrawButton = CreateBankButton(_bankContentPanel.transform, "BankWithdraw", "Withdraw All",
-                gap / 2f, btnY, btnW, OnBankWithdraw, out _bankWithdrawSelected);
+            stRT.sizeDelta = new Vector2(0f, 24f);
+            stRT.anchoredPosition = new Vector2(0f, btnH + 20f);
 
             _bankContentPanel.SetActive(false);
         }
@@ -2460,12 +2448,12 @@ namespace HaldorOverhaul
             var sep = new GameObject("Separator", typeof(RectTransform), typeof(Image));
             sep.transform.SetParent(parent, false);
             var srt = sep.GetComponent<RectTransform>();
-            srt.anchorMin = new Vector2(0.1f, 1f);
-            srt.anchorMax = new Vector2(0.9f, 1f);
+            srt.anchorMin = new Vector2(0.03f, 1f);
+            srt.anchorMax = new Vector2(0.97f, 1f);
             srt.pivot = new Vector2(0.5f, 1f);
             srt.sizeDelta = new Vector2(0f, 2f);
             srt.anchoredPosition = new Vector2(0f, yPos);
-            sep.GetComponent<Image>().color = new Color(GoldTextColor.r, GoldTextColor.g, GoldTextColor.b, 0.3f);
+            sep.GetComponent<Image>().color = new Color(GoldColor.r, GoldColor.g, GoldColor.b, 0.40f);
         }
 
         private void LoadBankBalance()
@@ -2497,15 +2485,29 @@ namespace HaldorOverhaul
 
         private void RefreshBankDisplay()
         {
-            if (_bankBalanceText != null)
-                _bankBalanceText.text = $"Bank Balance: {_bankBalance:N0}";
             int invCoins = GetBankInventoryCoins();
-            if (_bankInvCoinsText != null)
-                _bankInvCoinsText.text = $"Inventory Coins: {invCoins:N0}";
-            if (_bankDepositButton != null)
-                _bankDepositButton.interactable = invCoins > 0;
-            if (_bankWithdrawButton != null)
-                _bankWithdrawButton.interactable = _bankBalance > 0;
+            bool balChanged = _bankBalance != _lastBankBalanceDisplay;
+            bool invChanged = invCoins != _lastBankInvCoinsDisplay;
+
+            if (balChanged)
+            {
+                _lastBankBalanceDisplay = _bankBalance;
+                if (_bankBalanceText != null)
+                    _bankBalanceText.text = $"Bank Balance: {_bankBalance:N0}";
+                if (_bankWithdrawButton != null)
+                    _bankWithdrawButton.interactable = _bankBalance > 0;
+            }
+            if (invChanged)
+            {
+                _lastBankInvCoinsDisplay = invCoins;
+                if (_bankInvCoinsText != null)
+                    _bankInvCoinsText.text = $"Inventory Coins: {invCoins:N0}";
+                if (_bankDepositButton != null)
+                    _bankDepositButton.interactable = invCoins > 0;
+            }
+            if ((balChanged || invChanged) && _bankTotalText != null)
+                _bankTotalText.text = $"Total Wealth: {(_bankBalance + invCoins):N0}";
+
             UpdateBankHighlight();
         }
 
@@ -2562,8 +2564,13 @@ namespace HaldorOverhaul
             if (coinDrop == null) return;
 
             int amount = _bankBalance;
-            inv.AddItem("Coins", amount, coinDrop.m_itemData.m_quality,
+            var added = inv.AddItem("Coins", amount, coinDrop.m_itemData.m_quality,
                 coinDrop.m_itemData.m_variant, 0L, "");
+            if (added == null)
+            {
+                if (_bankStatusText != null) _bankStatusText.text = "Inventory full!";
+                return;
+            }
             _bankBalance = 0;
             SaveBankBalance();
             RefreshBankDisplay();

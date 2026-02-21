@@ -1,20 +1,24 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/trader_ui.png" alt="Haldor Trading Overhaul" width="600"/>
+<table><tr>
+<td><img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Buy.png" alt="Buy Tab" width="290"/></td>
+<td><img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Sell.png" alt="Sell Tab" width="290"/></td>
+<td><img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Bank.png" alt="Bank Tab" width="290"/></td>
+</tr></table>
 
 # 🛒 Haldor Trading Overhaul
 
-**Transform Haldor into the ultimate merchant with full buy/sell functionality**
+**Transform Haldor into the ultimate merchant with full buy/sell functionality and a personal bank**
 
-`580+ Items` · `Recipe-Based Pricing` · `Full Controller Support`
+`580+ Items` · `Recipe-Based Pricing` · `Full Controller Support` · `Built-in Bank`
 
-[![Version](https://img.shields.io/badge/Version-1.0.8-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.9-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
 [![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#-requirements)
 [![Items](https://img.shields.io/badge/Items-580+-green?style=for-the-badge)](#)
 
 ---
 
-[Features](#-features) · [Installation](#-installation) · [Configuration](#-configuration) · [Pricing](#-pricing-system) · [Troubleshooting](#-troubleshooting)
+[Features](#-features) · [Bank](#-bank) · [Installation](#-installation) · [Configuration](#-configuration) · [Pricing](#-pricing-system) · [Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -22,13 +26,13 @@
 
 ## ✨ Features
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| **🛒 Trading** | **🔍 Search** | **📂 Categories** | **🎮 Controller** |
-| Buy & Sell System | Real-time Filtering | Organized Browsing | Full Gamepad Support |
-| 580+ Tradeable Items | Persistent Focus | Collapsible Sections | Seamless Switching |
-| JSON-Driven Configs | Both Panels | Visual Item Icons | D-Pad Navigation |
-| Boss Progression | Instant Results | Quick Navigation | All Actions Mapped |
+| | | | | |
+|:---:|:---:|:---:|:---:|:---:|
+| **🛒 Trading** | **🔍 Search** | **📂 Categories** | **🎮 Controller** | **🏦 Bank** |
+| Buy & Sell System | Real-time Filtering | Organized Browsing | Full Gamepad Support | Personal Coin Vault |
+| 580+ Tradeable Items | Persistent Focus | Collapsible Sections | Seamless Switching | Deposit & Withdraw |
+| JSON-Driven Configs | Both Panels | Visual Item Icons | D-Pad Navigation | Bank-Funded Purchases |
+| Boss Progression | Instant Results | Quick Navigation | All Actions Mapped | Z Key Shortcut |
 
 | | |
 |:---:|:---:|
@@ -40,11 +44,42 @@
 
 ---
 
+## 🏦 Bank
+
+Haldor keeps your coins safe. The bank is central to trading — **your bank balance funds all purchases**, and selling items deposits directly into the bank.
+
+### How It Works
+
+| Action | Result |
+|:---|:---|
+| **Deposit** | Moves all inventory coins into your bank |
+| **Withdraw** | Moves all bank coins into your inventory |
+| **Buy item** | Deducted from your bank balance |
+| **Sell item** | Added directly to your bank balance |
+
+> ⚠️ **You must have coins in the bank to buy items.** Walk up to Haldor with coins in your inventory, open the Bank tab, and deposit before shopping.
+
+### Accessing the Bank
+
+- **At Haldor** — Open the shop and click the **Bank** tab (or use D-Pad right on controller)
+- **Anywhere** — Press **Z** to open the standalone bank panel at any time
+
+### Console Command
+
+```
+setbankbalance 5000
+setbankbalance = 5000
+```
+
+Enable the console with `-console` in your Steam launch options (F5 in-game).
+
+---
+
 ## 🎮 Controller Support
 
 | LB / RB | D-Pad / Stick | X | A | B |
 |:---:|:---:|:---:|:---:|:---:|
-| Switch Panels | Navigate Items | Toggle Category | Buy / Sell | Close UI |
+| Switch Panels | Navigate Items / Bank Buttons | Toggle Category | Buy / Sell / Confirm | Close UI |
 
 ---
 
@@ -291,6 +326,8 @@ RARITY_OVERRIDES = {'Chain': 1.8}
 | **Items not appearing** | Check `item_prefab` name · Verify boss defeated · Validate JSON syntax |
 | **Wrong prices** | Re-run `generate.py` · Check `ITEM_DATABASE` · Verify ingredients |
 | **Script errors** | Install Python 3.x · Check internet connection · Try custom path |
+| **Can't buy items** | Deposit coins into the Bank tab first — bank balance funds all purchases |
+| **`setbankbalance` not found** | Enable console with `-console` in Steam launch options, then press F5 |
 
 ---
 
