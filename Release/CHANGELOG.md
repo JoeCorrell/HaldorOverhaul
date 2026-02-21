@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.11
+- Removed CurrencyPocket dependency
+
+## 1.0.10
+- Version bump
+
 ## 1.0.9
 - Added Haldor's Bank system — bank balance funds all purchases, selling deposits directly to bank
 - Added Bank tab to the trader UI and standalone bank panel (Z key)

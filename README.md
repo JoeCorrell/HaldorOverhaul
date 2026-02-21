@@ -1,20 +1,28 @@
 <div align="center">
 
-<table><tr>
-<td><img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Buy.png" alt="Buy Tab" width="290"/></td>
-<td><img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Sell.png" alt="Sell Tab" width="290"/></td>
-<td><img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Bank.png" alt="Bank Tab" width="290"/></td>
-</tr></table>
-
 # 🛒 Haldor Trading Overhaul
 
 **Transform Haldor into the ultimate merchant with full buy/sell functionality and a personal bank**
 
 `580+ Items` · `Recipe-Based Pricing` · `Full Controller Support` · `Built-in Bank`
 
-[![Version](https://img.shields.io/badge/Version-1.0.9-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.11-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
 [![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#-requirements)
 [![Items](https://img.shields.io/badge/Items-580+-green?style=for-the-badge)](#)
+
+---
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Buy.png" alt="Buy Tab" width="600"/>
+</p>
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Sell.png" alt="Sell Tab" width="600"/>
+</p>
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Bank.png" alt="Bank Tab" width="600"/>
+</p>
 
 ---
 
@@ -90,7 +98,6 @@ Enable the console with `-console` in your Steam launch options (F5 in-game).
 | **Valheim** | Latest | PC Version |
 | **BepInEx** | 5.4.2200+ | [Download Here](https://valheim.thunderstore.io/package/denikson/BepInExPack_Valheim/) |
 | **JsonDotNET** | 13.0.4 | [Download Here](https://thunderstore.io/c/valheim/p/ValheimModding/JsonDotNET/) |
-| **CurrencyPocket** | 1.0.12+ | [Download Here](https://thunderstore.io/c/valheim/p/Azumatt/CurrencyPocket/) - Removes 999 coin limit |
 
 ---
 
@@ -337,9 +344,9 @@ RARITY_OVERRIDES = {'Chain': 1.8}
 
 **This is my first Valheim mod! I really hope people enjoy it.**
 
-| Inspiration | Data Source | Recommended |
-|:---:|:---:|:---:|
-| [shudnal's TradersExtended](https://thunderstore.io/c/valheim/p/shudnal/TradersExtended/) | [Jotunn Library](https://valheim-modding.github.io/Jotunn/) | [Azumatt's CurrencyPocket](https://thunderstore.io/c/valheim/p/Azumatt/CurrencyPocket/) |
+| Inspiration | Data Source |
+|:---:|:---:|
+| [shudnal's TradersExtended](https://thunderstore.io/c/valheim/p/shudnal/TradersExtended/) | [Jotunn Library](https://valheim-modding.github.io/Jotunn/) |
 
 ---
 
