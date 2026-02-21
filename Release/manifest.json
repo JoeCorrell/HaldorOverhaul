@@ -1,0 +1,12 @@
+{
+  "name": "HaldorOverhaul",
+  "author": "ProfMags",
+  "version_number": "1.0.6",
+  "website_url": "https://github.com/JoeCorrell/HaldorOverhaul",
+  "description": "Transforms Haldor into a full merchant with buy/sell panels, 580+ items, recipe-based pricing, search filters, category tabs, and full controller support.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2200",
+    "ValheimModding-JsonDotNET-13.0.4",
+    "Azumatt-CurrencyPocket-1.0.12"
+  ]
+}
