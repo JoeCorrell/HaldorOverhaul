@@ -1,12 +1,15 @@
 using HarmonyLib;
+using UnityEngine;
 
 namespace HaldorOverhaul
 {
     public static class TraderPatches
     {
         private static TraderUI _traderUI;
+        private static BankUI _bankUI;
 
         internal static void SetTraderUI(TraderUI ui) => _traderUI = ui;
+        internal static void SetBankUI(BankUI ui) => _bankUI = ui;
 
         /// <summary>
         /// Intercept StoreGui.Show — prevent vanilla UI, show our custom UI instead.
@@ -43,6 +46,18 @@ namespace HaldorOverhaul
         }
 
         /// <summary>
+        /// Suppress Haldor's random talk bubbles while our UI is open.
+        /// </summary>
+        [HarmonyPatch(typeof(Chat), "SetNpcText")]
+        [HarmonyPrefix]
+        private static bool Chat_SetNpcText_Prefix()
+        {
+            if (_traderUI != null && _traderUI.IsVisible)
+                return false;
+            return true;
+        }
+
+        /// <summary>
         /// Block keyboard input when the search box is focused.
         /// </summary>
         [HarmonyPatch(typeof(Chat), "HasFocus")]
@@ -54,18 +69,43 @@ namespace HaldorOverhaul
         }
 
         /// <summary>
-        /// Block player movement/input when our UI is open.
+        /// Block player movement/input when our UI is open (trader or bank).
         /// </summary>
         [HarmonyPatch(typeof(Player), "TakeInput")]
         [HarmonyPrefix]
         private static bool Player_TakeInput_Prefix(ref bool __result)
         {
-            if (_traderUI != null && _traderUI.IsVisible)
+            if ((_traderUI != null && _traderUI.IsVisible) ||
+                (_bankUI != null && _bankUI.IsVisible))
             {
                 __result = false;
                 return false;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Z key opens the bank UI — hooked into Player.Update so it only fires
+        /// when the player is alive, in-world, and no other UI is blocking input.
+        /// </summary>
+        [HarmonyPatch(typeof(Player), "Update")]
+        [HarmonyPostfix]
+        private static void Player_Update_Postfix(Player __instance)
+        {
+            if (_bankUI == null) return;
+            if (__instance != Player.m_localPlayer) return;
+            if (_bankUI.IsVisible) return;
+
+            // Don't open if another UI is already active
+            if (_traderUI != null && _traderUI.IsVisible) return;
+            if (InventoryGui.IsVisible()) return;
+            if (Menu.IsVisible()) return;
+            if (Minimap.IsOpen()) return;
+            if (Console.IsVisible()) return;
+            if (Chat.instance != null && Chat.instance.HasFocus()) return;
+
+            if (Input.GetKeyDown(KeyCode.Z))
+                _bankUI.Show();
         }
     }
 }

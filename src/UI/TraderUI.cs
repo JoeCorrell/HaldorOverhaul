@@ -18,8 +18,8 @@ namespace HaldorOverhaul
         private StoreGui _currentStoreGui;
 
         // ── Tab ──
-        private int _activeTab; // 0=Buy, 1=Sell, 2=Other
-        private static readonly string[] TabNames = { "Buy", "Sell", "Other" };
+        private int _activeTab; // 0=Buy, 1=Sell, 2=Bank
+        private static readonly string[] TabNames = { "Buy", "Sell", "Bank" };
 
         // ── Selection ──
         private int _selectedBuyIndex = -1;
@@ -55,7 +55,20 @@ namespace HaldorOverhaul
         // ── Tab buttons ──
         private GameObject _tabBuy;
         private GameObject _tabSell;
-        private GameObject _tabOther;
+        private GameObject _tabBank;
+
+        // ── Bank ──
+        private int _bankBalance;
+        private int _bankFocusedButton; // 0=deposit, 1=withdraw
+        private GameObject _bankContentPanel;
+        private TMP_Text _bankBalanceText;
+        private TMP_Text _bankInvCoinsText;
+        private TMP_Text _bankStatusText;
+        private Button _bankDepositButton;
+        private Button _bankWithdrawButton;
+        private GameObject _bankDepositSelected;
+        private GameObject _bankWithdrawSelected;
+        private const string BankDataKey = "HaldorBank_Balance";
 
         // ── Left column: item list ──
         private RectTransform _listRoot;
@@ -247,6 +260,9 @@ namespace HaldorOverhaul
             RefreshSellListIfChanged();
             UpdateCoinDisplay();
 
+            // Keep bank display live
+            if (_activeTab == 2) RefreshBankDisplay();
+
             // Gamepad
             UpdateGamepadInput();
         }
@@ -334,10 +350,15 @@ namespace HaldorOverhaul
             if (ZInput.GetButtonDown("JoyLStickRight") || ZInput.GetButtonDown("JoyDPadRight"))
                 SwitchTab(Mathf.Min(2, _activeTab + 1));
 
-            // A = buy/sell
+            // A = buy/sell or bank action
             if (ZInput.GetButtonDown("JoyButtonA"))
             {
-                if (_actionButton != null && _actionButton.interactable)
+                if (_activeTab == 2)
+                {
+                    if (_bankFocusedButton == 0) OnBankDeposit();
+                    else OnBankWithdraw();
+                }
+                else if (_actionButton != null && _actionButton.interactable)
                     OnActionButtonClicked();
             }
 
@@ -382,7 +403,12 @@ namespace HaldorOverhaul
                 SelectSellItem(next);
                 EnsureItemVisible(next);
             }
-            // tab 2 (Other): no list navigation
+            else if (_activeTab == 2)
+            {
+                // Bank — switch between deposit/withdraw
+                _bankFocusedButton = direction > 0 ? 1 : 0;
+                UpdateBankHighlight();
+            }
         }
 
         private void ToggleFocusedCategory()
@@ -478,9 +504,11 @@ namespace HaldorOverhaul
 
             // Tab buttons — each tab is exactly as wide as its column, centered over it
             // (mirrors the class selection UI pattern)
-            _tabBuy   = CreateTabButton("Buy",   0, _leftPad + _leftColWidth / 2f,         _leftColWidth, TabTopGap);
-            _tabSell  = CreateTabButton("Sell",  1, midColX   + _midColWidth   / 2f,        _midColWidth,  TabTopGap);
-            _tabOther = CreateTabButton("Other", 2, rightColX + _rightColWidth  / 2f,       _rightColWidth, TabTopGap);
+            _tabBuy  = CreateTabButton("Buy",  0, _leftPad + _leftColWidth / 2f,   _leftColWidth,  TabTopGap);
+            _tabSell = CreateTabButton("Sell", 1, midColX + _midColWidth / 2f,   _midColWidth,   TabTopGap);
+            _tabBank = CreateTabButton("Bank", 2, rightColX + _rightColWidth / 2f, _rightColWidth, TabTopGap);
+
+            BuildBankPanel();
 
             _canvasGO.SetActive(false);
             _uiBuilt = true;
@@ -952,7 +980,7 @@ namespace HaldorOverhaul
 
         private void RefreshTabHighlights()
         {
-            var tabs = new[] { _tabBuy, _tabSell, _tabOther };
+            var tabs = new[] { _tabBuy, _tabSell, _tabBank };
             for (int i = 0; i < tabs.Length; i++)
             {
                 if (tabs[i] == null) continue;
@@ -970,23 +998,27 @@ namespace HaldorOverhaul
         {
             bool isBuy = (_activeTab == 0);
             bool isSell = (_activeTab == 1);
+            bool isBank = (_activeTab == 2);
+
+            // Show/hide the 3-column layout vs bank panel
+            if (_leftColumn != null) _leftColumn.gameObject.SetActive(!isBank);
+            if (_middleColumn != null) _middleColumn.gameObject.SetActive(!isBank);
+            if (_rightColumn != null) _rightColumn.gameObject.SetActive(!isBank);
+            if (_bankContentPanel != null) _bankContentPanel.SetActive(isBank);
+
+            if (isBank)
+            {
+                LoadBankBalance();
+                _bankFocusedButton = 0;
+                RefreshBankDisplay();
+                return;
+            }
 
             // Toggle preview visibility
             if (_playerPreviewImg != null) _playerPreviewImg.gameObject.SetActive(isBuy);
             if (_haldorPreviewImg != null) _haldorPreviewImg.gameObject.SetActive(isSell);
 
-            if (_activeTab == 2)
-            {
-                ClearListElements();
-                if (_itemNameText != null) _itemNameText.text = "Other";
-                if (_itemDescText != null) _itemDescText.text = "Coming soon...";
-                if (_actionButton != null) _actionButton.interactable = false;
-                if (_actionButtonLabel != null) _actionButtonLabel.text = "Coming soon";
-            }
-            else
-            {
-                PopulateCurrentList();
-            }
+            PopulateCurrentList();
         }
 
         // ══════════════════════════════════════════
@@ -1108,7 +1140,7 @@ namespace HaldorOverhaul
                 else
                     RefreshDescription();
             }
-            // tab 2 (Other): handled by RefreshTabPanels directly
+            // tab 2 (Bank): handled by RefreshTabPanels directly
         }
 
         private void ClearListElements()
@@ -2293,6 +2325,251 @@ namespace HaldorOverhaul
                 if (f.name.Contains("Valheim") || f.name.Contains("Averia"))
                     return f;
             return null;
+        }
+
+        // ══════════════════════════════════════════
+        //  BANK TAB
+        // ══════════════════════════════════════════
+
+        private void BuildBankPanel()
+        {
+            // Full-size panel that replaces the 3 columns when bank tab is active
+            _bankContentPanel = new GameObject("BankContent", typeof(RectTransform), typeof(Image));
+            _bankContentPanel.transform.SetParent(_mainPanel.transform, false);
+            var rt = _bankContentPanel.GetComponent<RectTransform>();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(OuterPad, _bottomPad);
+            rt.offsetMax = new Vector2(-OuterPad, -_colTopInset);
+            var img = _bankContentPanel.GetComponent<Image>();
+            img.sprite = null;
+            img.color = new Color(0.22f, 0.10f, 0.04f, 0.65f);
+
+            // Title
+            var title = CreateBankText(_bankContentPanel.transform, "BankTitle", "Haldor's Bank", 28f, GoldTextColor);
+            var titleRT = title.GetComponent<RectTransform>();
+            titleRT.anchorMin = new Vector2(0f, 1f);
+            titleRT.anchorMax = new Vector2(1f, 1f);
+            titleRT.pivot = new Vector2(0.5f, 1f);
+            titleRT.sizeDelta = new Vector2(0f, 40f);
+            titleRT.anchoredPosition = new Vector2(0f, -16f);
+
+            // Separator
+            CreateBankSeparator(_bankContentPanel.transform, -62f);
+
+            // Bank balance
+            _bankBalanceText = CreateBankText(_bankContentPanel.transform, "BankBalance", "Bank Balance: 0", 26f, GoldTextColor);
+            var bbRT = _bankBalanceText.GetComponent<RectTransform>();
+            bbRT.anchorMin = new Vector2(0f, 1f);
+            bbRT.anchorMax = new Vector2(1f, 1f);
+            bbRT.pivot = new Vector2(0.5f, 1f);
+            bbRT.sizeDelta = new Vector2(0f, 36f);
+            bbRT.anchoredPosition = new Vector2(0f, -82f);
+
+            // Inventory coins
+            _bankInvCoinsText = CreateBankText(_bankContentPanel.transform, "BankInvCoins", "Inventory Coins: 0", 20f, new Color(0.85f, 0.85f, 0.85f));
+            var icRT = _bankInvCoinsText.GetComponent<RectTransform>();
+            icRT.anchorMin = new Vector2(0f, 1f);
+            icRT.anchorMax = new Vector2(1f, 1f);
+            icRT.pivot = new Vector2(0.5f, 1f);
+            icRT.sizeDelta = new Vector2(0f, 30f);
+            icRT.anchoredPosition = new Vector2(0f, -122f);
+
+            // Separator before buttons
+            CreateBankSeparator(_bankContentPanel.transform, -166f);
+
+            // Status text
+            _bankStatusText = CreateBankText(_bankContentPanel.transform, "BankStatus", "", 17f, new Color(0.7f, 0.7f, 0.7f));
+            var stRT = _bankStatusText.GetComponent<RectTransform>();
+            stRT.anchorMin = new Vector2(0f, 0f);
+            stRT.anchorMax = new Vector2(1f, 0f);
+            stRT.pivot = new Vector2(0.5f, 0f);
+            stRT.sizeDelta = new Vector2(0f, 26f);
+            stRT.anchoredPosition = new Vector2(0f, 60f);
+
+            // Buttons
+            float btnW = 180f;
+            float gap = 20f;
+            float btnY = 16f;
+
+            _bankDepositButton = CreateBankButton(_bankContentPanel.transform, "BankDeposit", "Deposit All",
+                -(btnW + gap / 2f), btnY, btnW, OnBankDeposit, out _bankDepositSelected);
+            _bankWithdrawButton = CreateBankButton(_bankContentPanel.transform, "BankWithdraw", "Withdraw All",
+                gap / 2f, btnY, btnW, OnBankWithdraw, out _bankWithdrawSelected);
+
+            _bankContentPanel.SetActive(false);
+        }
+
+        private Button CreateBankButton(Transform parent, string name, string label,
+            float xOffset, float y, float width, UnityEngine.Events.UnityAction onClick, out GameObject outSelected)
+        {
+            outSelected = null;
+            if (_buttonTemplate == null) return null;
+
+            var go = Instantiate(_buttonTemplate, parent);
+            go.name = name;
+            go.SetActive(true);
+            var btn = go.GetComponent<Button>();
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(onClick);
+                btn.navigation = new Navigation { mode = Navigation.Mode.None };
+            }
+            var txt = go.GetComponentInChildren<TMP_Text>(true);
+            if (txt != null) { txt.gameObject.SetActive(true); txt.text = label; }
+            StripButtonHints(go, txt);
+
+            var brt = go.GetComponent<RectTransform>();
+            brt.anchorMin = new Vector2(0.5f, 0f);
+            brt.anchorMax = new Vector2(0.5f, 0f);
+            brt.pivot = new Vector2(0f, 0f);
+            brt.sizeDelta = new Vector2(width, Mathf.Max(_craftBtnHeight, 36f));
+            brt.anchoredPosition = new Vector2(xOffset, y);
+
+            // Selection highlight for controller
+            var selGO = new GameObject("selected", typeof(RectTransform), typeof(Image));
+            selGO.transform.SetParent(go.transform, false);
+            selGO.transform.SetAsFirstSibling();
+            var selRT = selGO.GetComponent<RectTransform>();
+            selRT.anchorMin = Vector2.zero; selRT.anchorMax = Vector2.one;
+            selRT.offsetMin = new Vector2(-4f, -4f);
+            selRT.offsetMax = new Vector2(4f, 4f);
+            selGO.GetComponent<Image>().color = new Color(1f, 0.82f, 0.24f, 0.25f);
+            selGO.SetActive(false);
+            outSelected = selGO;
+
+            return btn;
+        }
+
+        private TMP_Text CreateBankText(Transform parent, string name, string text, float fontSize, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            if (_valheimFont != null) tmp.font = _valheimFont;
+            tmp.fontSize = fontSize;
+            tmp.color = color;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.text = text;
+            return tmp;
+        }
+
+        private void CreateBankSeparator(Transform parent, float yPos)
+        {
+            var sep = new GameObject("Separator", typeof(RectTransform), typeof(Image));
+            sep.transform.SetParent(parent, false);
+            var srt = sep.GetComponent<RectTransform>();
+            srt.anchorMin = new Vector2(0.1f, 1f);
+            srt.anchorMax = new Vector2(0.9f, 1f);
+            srt.pivot = new Vector2(0.5f, 1f);
+            srt.sizeDelta = new Vector2(0f, 2f);
+            srt.anchoredPosition = new Vector2(0f, yPos);
+            sep.GetComponent<Image>().color = new Color(GoldTextColor.r, GoldTextColor.g, GoldTextColor.b, 0.3f);
+        }
+
+        private void LoadBankBalance()
+        {
+            _bankBalance = 0;
+            var player = Player.m_localPlayer;
+            if (player != null && player.m_customData.TryGetValue(BankDataKey, out string val))
+                int.TryParse(val, out _bankBalance);
+        }
+
+        private void SaveBankBalance()
+        {
+            var player = Player.m_localPlayer;
+            if (player != null)
+                player.m_customData[BankDataKey] = _bankBalance.ToString();
+        }
+
+        private int GetBankInventoryCoins()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return 0;
+            var inv = ((Humanoid)player).GetInventory();
+            var coinPrefab = ObjectDB.instance?.GetItemPrefab("Coins");
+            var coinDrop = coinPrefab?.GetComponent<ItemDrop>();
+            string coinName = coinDrop?.m_itemData?.m_shared?.m_name;
+            if (inv == null || string.IsNullOrEmpty(coinName)) return 0;
+            return inv.CountItems(coinName);
+        }
+
+        private void RefreshBankDisplay()
+        {
+            if (_bankBalanceText != null)
+                _bankBalanceText.text = $"Bank Balance: {_bankBalance:N0}";
+            int invCoins = GetBankInventoryCoins();
+            if (_bankInvCoinsText != null)
+                _bankInvCoinsText.text = $"Inventory Coins: {invCoins:N0}";
+            if (_bankDepositButton != null)
+                _bankDepositButton.interactable = invCoins > 0;
+            if (_bankWithdrawButton != null)
+                _bankWithdrawButton.interactable = _bankBalance > 0;
+            UpdateBankHighlight();
+        }
+
+        private void UpdateBankHighlight()
+        {
+            bool gp = ZInput.IsGamepadActive();
+            if (_bankDepositSelected != null) _bankDepositSelected.SetActive(gp && _bankFocusedButton == 0);
+            if (_bankWithdrawSelected != null) _bankWithdrawSelected.SetActive(gp && _bankFocusedButton == 1);
+        }
+
+        private void OnBankDeposit()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+            var inv = ((Humanoid)player).GetInventory();
+            if (inv == null) return;
+
+            var coinPrefab = ObjectDB.instance?.GetItemPrefab("Coins");
+            var coinDrop = coinPrefab?.GetComponent<ItemDrop>();
+            string coinName = coinDrop?.m_itemData?.m_shared?.m_name;
+            if (string.IsNullOrEmpty(coinName)) return;
+
+            int coins = inv.CountItems(coinName);
+            if (coins <= 0)
+            {
+                if (_bankStatusText != null) _bankStatusText.text = "No coins to deposit!";
+                return;
+            }
+
+            inv.RemoveItem(coinName, coins);
+            _bankBalance += coins;
+            SaveBankBalance();
+            RefreshBankDisplay();
+            UpdateCoinDisplay();
+            if (_bankStatusText != null) _bankStatusText.text = $"Deposited {coins:N0} coins";
+            ((Character)player).Message(MessageHud.MessageType.Center, $"Deposited {coins:N0} coins");
+        }
+
+        private void OnBankWithdraw()
+        {
+            var player = Player.m_localPlayer;
+            if (player == null) return;
+            var inv = ((Humanoid)player).GetInventory();
+            if (inv == null) return;
+
+            if (_bankBalance <= 0)
+            {
+                if (_bankStatusText != null) _bankStatusText.text = "Bank is empty!";
+                return;
+            }
+
+            var coinPrefab = ObjectDB.instance?.GetItemPrefab("Coins");
+            var coinDrop = coinPrefab?.GetComponent<ItemDrop>();
+            if (coinDrop == null) return;
+
+            int amount = _bankBalance;
+            inv.AddItem("Coins", amount, coinDrop.m_itemData.m_quality,
+                coinDrop.m_itemData.m_variant, 0L, "");
+            _bankBalance = 0;
+            SaveBankBalance();
+            RefreshBankDisplay();
+            UpdateCoinDisplay();
+            if (_bankStatusText != null) _bankStatusText.text = $"Withdrew {amount:N0} coins";
+            ((Character)player).Message(MessageHud.MessageType.Center, $"Withdrew {amount:N0} coins");
         }
     }
 }
