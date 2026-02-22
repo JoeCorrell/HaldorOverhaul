@@ -81,22 +81,8 @@ namespace HaldorOverhaul
         {
             if (!_isVisible) return;
 
-            // Cursor — match TraderUI pattern
-            if (!ZInput.IsGamepadActive())
-            {
-                Cursor.lockState = CursorLockMode.None;
-                Cursor.visible = true;
-            }
-            else
-            {
-                Cursor.visible = false;
-            }
-
             // Close on Escape
             if (Input.GetKeyDown(KeyCode.Escape)) { Hide(); return; }
-
-            // Close on Z toggle
-            if (Input.GetKeyDown(KeyCode.Z)) { Hide(); return; }
 
             // Gamepad input
             UpdateGamepadInput();
@@ -109,6 +95,17 @@ namespace HaldorOverhaul
         {
             if (!_isVisible) return;
 
+            // Cursor — run in LateUpdate so we overwrite GameCamera's lock each frame
+            if (!ZInput.IsGamepadActive())
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+            else
+            {
+                Cursor.visible = false;
+            }
+
             // Hide crosshair and hover text
             var hud = Hud.instance;
             if (hud != null)
@@ -117,8 +114,7 @@ namespace HaldorOverhaul
                 if (hud.m_hoverName != null) hud.m_hoverName.text = "";
             }
 
-            // On gamepad, clear EventSystem so the buttons don't get Unity's built-in nav
-            // On mouse, let EventSystem work normally so clicks register
+            // On gamepad, clear EventSystem so Unity's built-in nav doesn't interfere
             if (ZInput.IsGamepadActive() && EventSystem.current != null)
                 EventSystem.current.SetSelectedGameObject(null);
         }

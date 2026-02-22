@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.13
+- Fixed standalone bank UI cursor being locked when opened with Z key
+- Fixed bank UI not registering as a store UI, causing camera and input issues
+- Removed Z key shortcut for bank — bank is now only accessible through the trader UI
+- Added full controller support to the standalone bank panel
+
+## 1.0.12
+- Version bump
+
 ## 1.0.11
 - Removed CurrencyPocket dependency
 

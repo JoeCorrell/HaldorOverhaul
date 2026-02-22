@@ -44,6 +44,8 @@ namespace HaldorOverhaul
         {
             if (_traderUI != null && _traderUI.IsVisible)
                 __result = true;
+            if (_bankUI != null && _bankUI.IsVisible)
+                __result = true;
         }
 
         /// <summary>
@@ -122,28 +124,5 @@ namespace HaldorOverhaul
                 });
         }
 
-        /// <summary>
-        /// Z key opens the bank UI — hooked into Player.Update so it only fires
-        /// when the player is alive, in-world, and no other UI is blocking input.
-        /// </summary>
-        [HarmonyPatch(typeof(Player), "Update")]
-        [HarmonyPostfix]
-        private static void Player_Update_Postfix(Player __instance)
-        {
-            if (_bankUI == null) return;
-            if (__instance != Player.m_localPlayer) return;
-            if (_bankUI.IsVisible) return;
-
-            // Don't open if another UI is already active
-            if (_traderUI != null && _traderUI.IsVisible) return;
-            if (InventoryGui.IsVisible()) return;
-            if (Menu.IsVisible()) return;
-            if (Minimap.IsOpen()) return;
-            if (Console.IsVisible()) return;
-            if (Chat.instance != null && Chat.instance.HasFocus()) return;
-
-            if (Input.GetKeyDown(KeyCode.Z))
-                _bankUI.Show();
-        }
     }
 }
