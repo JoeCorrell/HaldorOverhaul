@@ -29,11 +29,17 @@ namespace HaldorOverhaul
         private readonly Dictionary<string, bool> _buyCategoryCollapsed = new Dictionary<string, bool>();
         private readonly Dictionary<string, bool> _sellCategoryCollapsed = new Dictionary<string, bool>();
         private static readonly string[] CategoryBuckets =
-            { "Weapons", "Armor", "Shields", "Ammo", "Consumables", "Materials", "Utility", "Trophies", "Crafting", "Misc" };
+            { "Weapons", "Armor", "Shields", "Ammo", "Consumables", "Materials", "Utility", "Trophies", "Misc" };
 
         // ── Search ──
         private string _searchFilter = "";
         private TMP_InputField _searchInput;
+
+        // ── Category filter buttons ──
+        private string _activeCategoryFilter = null;
+        private readonly List<Button> _categoryFilterButtons = new List<Button>();
+        private readonly List<string> _categoryFilterKeys = new List<string>();
+        private int _joyCategoryFocusIndex = -1; // controller hover index (-1 = none)
 
         // ── UI root ──
         private GameObject _canvasGO;
@@ -41,6 +47,8 @@ namespace HaldorOverhaul
 
         // ── Extracted assets ──
         private Sprite _bgSprite;
+        private Sprite _textFieldSprite;
+        private Sprite _catBtnSprite;
         private GameObject _recipeElementPrefab;
         private GameObject _buttonTemplate;
         private float _scrollSensitivity = 40f;
@@ -120,7 +128,8 @@ namespace HaldorOverhaul
         private const float ExtraMiddleWidth = 80f;
         private const float OuterPad = 6f;
         private const float SearchBoxHeight = 32f;
-        static readonly Color ColOverlay = new Color(0f, 0f, 0f, 0.65f);
+        private const float FilterRowHeight = 38f; // 30 × 1.25
+        static readonly Color ColOverlay = new Color(0f, 0f, 0f, 0f); // no overlay — matches native Valheim UIs
         static readonly Color GoldColor = new Color(0.83f, 0.64f, 0.31f, 1f);
         static readonly Color GoldTextColor = new Color(0.83f, 0.52f, 0.18f, 1f);
         static readonly Color CategoryHeaderBg = new Color(0.3f, 0.25f, 0.15f, 0.85f);
@@ -192,6 +201,8 @@ namespace HaldorOverhaul
             _selectedSellIndex = -1;
             _searchFilter = "";
             if (_searchInput != null) _searchInput.text = "";
+            _activeCategoryFilter = null;
+            _joyCategoryFocusIndex = -1;
             _lastInventoryHash = 0;
             _lastCoinDisplayCount = -1;
             _lastBankBalanceDisplay = -1;
@@ -340,34 +351,44 @@ namespace HaldorOverhaul
             if (ZInput.GetButtonDown("JoyTabRight")) SwitchTab(Mathf.Min(2, _activeTab + 1));
             if (ZInput.GetButtonDown("JoyButtonB")) { Hide(); return; }
 
-            // Navigate list
+            // Up/down — navigate item list; also clears category button focus
             if (ZInput.GetButtonDown("JoyLStickDown") || ZInput.GetButtonDown("JoyDPadDown"))
             {
+                _joyCategoryFocusIndex = -1;
+                UpdateCategoryFilterVisuals();
                 MoveSelection(1);
                 if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
             }
             if (ZInput.GetButtonDown("JoyLStickUp") || ZInput.GetButtonDown("JoyDPadUp"))
             {
+                _joyCategoryFocusIndex = -1;
+                UpdateCategoryFilterVisuals();
                 MoveSelection(-1);
                 if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
             }
 
-            // Left/right — navigate bank buttons when on bank tab, otherwise switch tabs
+            // Left/right — navigate category buttons on buy/sell, bank buttons on bank tab
             if (ZInput.GetButtonDown("JoyLStickLeft") || ZInput.GetButtonDown("JoyDPadLeft"))
             {
                 if (_activeTab == 2) { _bankFocusedButton = 0; UpdateBankHighlight(); }
-                else SwitchTab(Mathf.Max(0, _activeTab - 1));
+                else NavigateCategoryButtons(-1);
             }
             if (ZInput.GetButtonDown("JoyLStickRight") || ZInput.GetButtonDown("JoyDPadRight"))
             {
                 if (_activeTab == 2) { _bankFocusedButton = 1; UpdateBankHighlight(); }
-                else SwitchTab(Mathf.Min(2, _activeTab + 1));
+                else NavigateCategoryButtons(1);
             }
 
-            // A = buy/sell or bank action
+            // A = confirm focused category button, or buy/sell, or bank action
             if (ZInput.GetButtonDown("JoyButtonA"))
             {
-                if (_activeTab == 2)
+                if (_joyCategoryFocusIndex >= 0 && _joyCategoryFocusIndex < _categoryFilterKeys.Count)
+                {
+                    OnCategoryFilterClicked(_categoryFilterKeys[_joyCategoryFocusIndex]);
+                    _joyCategoryFocusIndex = -1;
+                    UpdateCategoryFilterVisuals();
+                }
+                else if (_activeTab == 2)
                 {
                     if (_bankFocusedButton == 0) OnBankDeposit();
                     else OnBankWithdraw();
@@ -395,6 +416,16 @@ namespace HaldorOverhaul
                     _descScrollRect.verticalNormalizedPosition = Mathf.Clamp01(_descScrollRect.verticalNormalizedPosition);
                 }
             }
+        }
+
+        private void NavigateCategoryButtons(int dir)
+        {
+            if (_categoryFilterButtons.Count == 0) return;
+            if (_joyCategoryFocusIndex < 0)
+                _joyCategoryFocusIndex = dir > 0 ? 0 : _categoryFilterButtons.Count - 1;
+            else
+                _joyCategoryFocusIndex = Mathf.Clamp(_joyCategoryFocusIndex + dir, 0, _categoryFilterButtons.Count - 1);
+            UpdateCategoryFilterVisuals();
         }
 
         private void MoveSelection(int direction)
@@ -542,6 +573,16 @@ namespace HaldorOverhaul
             _recipeElementPrefab = invGui.m_recipeElementPrefab;
             if (_recipeElementPrefab == null) return false;
 
+            // Search bar background — load custom texture
+            var searchBarTex = TextureLoader.LoadUITexture("SearchBarBackground");
+            if (searchBarTex != null)
+                _textFieldSprite = Sprite.Create(searchBarTex, new Rect(0, 0, searchBarTex.width, searchBarTex.height), new Vector2(0.5f, 0.5f));
+
+            // Category button background — load custom texture
+            var catBtnTex = TextureLoader.LoadUITexture("CategoryBackground");
+            if (catBtnTex != null)
+                _catBtnSprite = Sprite.Create(catBtnTex, new Rect(0, 0, catBtnTex.width, catBtnTex.height), new Vector2(0.5f, 0.5f));
+
             // Button template
             _craftBtnHeight = 30f;
             if (invGui.m_craftButton != null)
@@ -616,14 +657,17 @@ namespace HaldorOverhaul
             // Search box at top of left column
             BuildSearchBox();
 
-            // Scroll viewport below search box
+            // Category filter buttons below search box
+            BuildCategoryFilterRow();
+
+            // Scroll viewport below filter row
             var scrollGO = new GameObject("ItemListScroll", typeof(RectTransform), typeof(Image), typeof(Mask));
             scrollGO.transform.SetParent(_leftColumn, false);
             var scrollRT = scrollGO.GetComponent<RectTransform>();
             scrollRT.anchorMin = Vector2.zero;
             scrollRT.anchorMax = Vector2.one;
             scrollRT.offsetMin = new Vector2(2f, 2f);
-            scrollRT.offsetMax = new Vector2(-2f, -(SearchBoxHeight + 6f));
+            scrollRT.offsetMax = new Vector2(-2f, -(SearchBoxHeight + 6f + FilterRowHeight + 4f));
             scrollGO.GetComponent<Image>().color = new Color(0, 0, 0, 0.01f);
             scrollGO.GetComponent<Mask>().showMaskGraphic = false;
 
@@ -647,7 +691,7 @@ namespace HaldorOverhaul
             _listScrollRect.vertical = true;
             _listScrollRect.horizontal = false;
             _listScrollRect.movementType = ScrollRect.MovementType.Clamped;
-            _listScrollRect.scrollSensitivity = _scrollSensitivity * 2f;
+            _listScrollRect.scrollSensitivity = _scrollSensitivity * 4f;
             _listScrollRect.verticalScrollbar = sb;
             _listScrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
         }
@@ -660,9 +704,19 @@ namespace HaldorOverhaul
             bgRT.anchorMin = new Vector2(0f, 1f);
             bgRT.anchorMax = new Vector2(1f, 1f);
             bgRT.pivot = new Vector2(0.5f, 1f);
-            bgRT.sizeDelta = new Vector2(-4f, SearchBoxHeight);
+            bgRT.sizeDelta = new Vector2(0f, SearchBoxHeight);
             bgRT.anchoredPosition = new Vector2(0f, -2f);
-            bg.GetComponent<Image>().color = new Color(0.12f, 0.08f, 0.04f, 0.9f);
+            var bgImg = bg.GetComponent<Image>();
+            if (_textFieldSprite != null)
+            {
+                bgImg.sprite = _textFieldSprite;
+                bgImg.type = Image.Type.Sliced;
+                bgImg.color = Color.white;
+            }
+            else
+            {
+                bgImg.color = new Color(0.12f, 0.08f, 0.04f, 0.9f);
+            }
 
             // Text area
             var textArea = new GameObject("TextArea", typeof(RectTransform), typeof(RectMask2D));
@@ -671,8 +725,9 @@ namespace HaldorOverhaul
             taRT.anchorMin = Vector2.zero; taRT.anchorMax = Vector2.one;
             taRT.offsetMin = new Vector2(8f, 2f); taRT.offsetMax = new Vector2(-8f, -2f);
 
-            // Placeholder
+            // Placeholder — created inactive so TMP Awake doesn't fire before font is set
             var phGO = new GameObject("Placeholder", typeof(RectTransform));
+            phGO.SetActive(false);
             phGO.transform.SetParent(textArea.transform, false);
             var ph = phGO.AddComponent<TextMeshProUGUI>();
             if (_valheimFont != null) ph.font = _valheimFont;
@@ -683,9 +738,11 @@ namespace HaldorOverhaul
             var phRT = phGO.GetComponent<RectTransform>();
             phRT.anchorMin = Vector2.zero; phRT.anchorMax = Vector2.one;
             phRT.offsetMin = Vector2.zero; phRT.offsetMax = Vector2.zero;
+            phGO.SetActive(true);
 
-            // Input text
+            // Input text — created inactive so TMP Awake doesn't fire before font is set
             var txtGO = new GameObject("Text", typeof(RectTransform));
+            txtGO.SetActive(false);
             txtGO.transform.SetParent(textArea.transform, false);
             var txt = txtGO.AddComponent<TextMeshProUGUI>();
             if (_valheimFont != null) txt.font = _valheimFont;
@@ -695,16 +752,190 @@ namespace HaldorOverhaul
             var txtRT = txtGO.GetComponent<RectTransform>();
             txtRT.anchorMin = Vector2.zero; txtRT.anchorMax = Vector2.one;
             txtRT.offsetMin = Vector2.zero; txtRT.offsetMax = Vector2.zero;
+            txtGO.SetActive(true);
 
             // TMP_InputField
             _searchInput = bg.AddComponent<TMP_InputField>();
             _searchInput.textViewport = taRT;
             _searchInput.textComponent = txt;
             _searchInput.placeholder = ph;
-            _searchInput.fontAsset = _valheimFont;
+            if (_valheimFont != null) _searchInput.fontAsset = _valheimFont;
             _searchInput.pointSize = 16f;
             _searchInput.characterLimit = 50;
             _searchInput.onValueChanged.AddListener(OnSearchChanged);
+        }
+
+        private void BuildCategoryFilterRow()
+        {
+            // Container row sitting below the search box
+            var rowGO = new GameObject("CategoryFilterRow", typeof(RectTransform), typeof(Image));
+            rowGO.transform.SetParent(_leftColumn, false);
+            var rowRT = rowGO.GetComponent<RectTransform>();
+            rowRT.anchorMin = new Vector2(0f, 1f);
+            rowRT.anchorMax = new Vector2(1f, 1f);
+            rowRT.pivot = new Vector2(0.5f, 1f);
+            rowRT.sizeDelta = new Vector2(-4f, FilterRowHeight);
+            rowRT.anchoredPosition = new Vector2(0f, -(SearchBoxHeight + 6f));
+            rowGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f); // transparent — let column bg show through
+
+            var layout = rowGO.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 2f;
+            layout.padding = new RectOffset(2, 2, 2, 2);
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = true;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+
+            _categoryFilterButtons.Clear();
+            _categoryFilterKeys.Clear();
+
+            // Category → representative item prefab name — icon pulled from ObjectDB at runtime
+            var categoryPrefabs = new Dictionary<string, string>
+            {
+                { "Weapons",     "AxeBronze"          },
+                { "Armor",       "HelmetTrollLeather" },
+                { "Shields",     "ShieldWood"         },
+                { "Ammo",        "ArrowObsidian"      },
+                { "Consumables", "MeadStaminaMinor"   },
+                { "Materials",   "Bronze"             },
+                { "Utility",     "BeltStrength"       },
+                { "Trophies",    "TrophySkeleton"     },
+                { "Misc",        "Coins"              },
+            };
+
+            foreach (string cat in CategoryBuckets)
+            {
+                string pn = categoryPrefabs.TryGetValue(cat, out string v) ? v : null;
+                Sprite icon = pn != null ? GetItemIcon(pn) : null;
+                var btn = CreateCategoryFilterButton(rowGO.transform, cat, icon);
+                if (btn != null)
+                {
+                    _categoryFilterButtons.Add(btn);
+                    _categoryFilterKeys.Add(cat);
+                }
+            }
+
+            UpdateCategoryFilterVisuals();
+        }
+
+        private Button CreateCategoryFilterButton(Transform parent, string category, Sprite icon)
+        {
+            if (_buttonTemplate == null) return null;
+
+            var btnGO = Instantiate(_buttonTemplate, parent);
+            btnGO.name = $"CatBtn_{category}";
+            btnGO.SetActive(true);
+
+            // Strip all children inherited from the craft button template
+            for (int i = btnGO.transform.childCount - 1; i >= 0; i--)
+                DestroyImmediate(btnGO.transform.GetChild(i).gameObject);
+
+            // Strip components that cause stretching on hover
+            var anim = btnGO.GetComponent<Animator>();
+            if (anim != null) DestroyImmediate(anim);
+            var csf = btnGO.GetComponent<ContentSizeFitter>();
+            if (csf != null) DestroyImmediate(csf);
+            var le = btnGO.GetComponent<LayoutElement>();
+            if (le != null) DestroyImmediate(le);
+
+            // Apply the game's button sprite as the button background
+            var bgImg = btnGO.GetComponent<Image>();
+            if (bgImg != null)
+            {
+                if (_catBtnSprite != null)
+                {
+                    bgImg.sprite = _catBtnSprite;
+                    bgImg.type = Image.Type.Sliced;
+                }
+                bgImg.color = Color.white;
+            }
+
+            var btn = btnGO.GetComponent<Button>();
+            if (btn != null)
+            {
+                btn.onClick.RemoveAllListeners();
+                btn.transition = Selectable.Transition.ColorTint;
+                string cat = category;
+                btn.onClick.AddListener(() => OnCategoryFilterClicked(cat));
+                btn.navigation = new Navigation { mode = Navigation.Mode.None };
+
+                var colors = btn.colors;
+                colors.normalColor = Color.white;
+                colors.highlightedColor = new Color(0.85f, 0.85f, 0.85f, 1f); // subtle dim on hover
+                colors.pressedColor = new Color(0.65f, 0.65f, 0.65f, 1f);     // dim on press
+                colors.selectedColor = Color.white;
+                colors.colorMultiplier = 1f;
+                colors.fadeDuration = 0.08f;
+                btn.colors = colors;
+            }
+
+            // Icon image inside the button
+            if (icon != null)
+            {
+                var iconGO = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+                iconGO.transform.SetParent(btnGO.transform, false);
+                var iconRT = iconGO.GetComponent<RectTransform>();
+                iconRT.anchorMin = new Vector2(0.15f, 0.15f);
+                iconRT.anchorMax = new Vector2(0.85f, 0.85f);
+                iconRT.offsetMin = Vector2.zero;
+                iconRT.offsetMax = Vector2.zero;
+                var iconImg = iconGO.GetComponent<Image>();
+                iconImg.sprite = icon;
+                iconImg.preserveAspect = true;
+                iconImg.raycastTarget = false;
+            }
+
+            return btn;
+        }
+
+        private void OnCategoryFilterClicked(string category)
+        {
+            // Toggle: clicking the active category resets to "all"
+            _activeCategoryFilter = (_activeCategoryFilter == category) ? null : category;
+            _selectedBuyIndex = -1;
+            _selectedSellIndex = -1;
+            UpdateCategoryFilterVisuals();
+            if (_listScrollRect != null)
+            {
+                _listScrollRect.verticalNormalizedPosition = 1f;
+                _listScrollRect.velocity = Vector2.zero;
+            }
+            PopulateCurrentList();
+        }
+
+        private void UpdateCategoryFilterVisuals()
+        {
+            for (int i = 0; i < _categoryFilterButtons.Count; i++)
+            {
+                var btn = _categoryFilterButtons[i];
+                if (btn == null) continue;
+                bool active  = _activeCategoryFilter == _categoryFilterKeys[i];
+                bool focused = _joyCategoryFocusIndex == i;
+                var img = btn.GetComponent<Image>();
+                if (img != null)
+                    img.color = active
+                        ? new Color(1f, 0.75f, 0.3f, 1f)   // warm gold tint — active filter
+                        : focused
+                            ? new Color(0.85f, 0.75f, 0.6f, 1f) // light warm — controller hover
+                            : Color.white;                       // natural sprite colors — inactive
+            }
+        }
+
+        private static Sprite GetItemIcon(string prefabName)
+        {
+            if (ObjectDB.instance == null) return null;
+            var prefab = ObjectDB.instance.GetItemPrefab(prefabName);
+            var drop = prefab?.GetComponent<ItemDrop>();
+            return drop?.m_itemData?.GetIcon();
+        }
+
+        private static Sprite FindSpriteByName(string spriteName)
+        {
+            foreach (var s in Resources.FindObjectsOfTypeAll<Sprite>())
+                if (s != null && s.name.Equals(spriteName, StringComparison.OrdinalIgnoreCase))
+                    return s;
+            return null;
         }
 
         private void BuildDescriptionColumn()
@@ -713,6 +944,7 @@ namespace HaldorOverhaul
 
             // Item name header
             var nameGO = new GameObject("ItemName", typeof(RectTransform));
+            nameGO.SetActive(false);
             nameGO.transform.SetParent(_middleColumn, false);
             _itemNameText = nameGO.AddComponent<TextMeshProUGUI>();
             if (_valheimFont != null) _itemNameText.font = _valheimFont;
@@ -720,6 +952,7 @@ namespace HaldorOverhaul
             _itemNameText.color = Color.white;
             _itemNameText.alignment = TextAlignmentOptions.Center;
             _itemNameText.text = "";
+            nameGO.SetActive(true);
             var nameRT = nameGO.GetComponent<RectTransform>();
             nameRT.anchorMin = new Vector2(0f, 1f);
             nameRT.anchorMax = new Vector2(1f, 1f);
@@ -729,6 +962,7 @@ namespace HaldorOverhaul
 
             // Coin display above action button
             var coinGO = new GameObject("CoinDisplay", typeof(RectTransform));
+            coinGO.SetActive(false);
             coinGO.transform.SetParent(_middleColumn, false);
             _coinDisplayText = coinGO.AddComponent<TextMeshProUGUI>();
             if (_valheimFont != null) _coinDisplayText.font = _valheimFont;
@@ -736,6 +970,7 @@ namespace HaldorOverhaul
             _coinDisplayText.color = GoldTextColor;
             _coinDisplayText.alignment = TextAlignmentOptions.Center;
             _coinDisplayText.text = "Coins: 0";
+            coinGO.SetActive(true);
             var coinRT = coinGO.GetComponent<RectTransform>();
             coinRT.anchorMin = new Vector2(0f, 0f);
             coinRT.anchorMax = new Vector2(1f, 0f);
@@ -764,6 +999,20 @@ namespace HaldorOverhaul
                     _actionButtonLabel.text = "Select an item";
                 }
                 StripButtonHints(btnGO, _actionButtonLabel);
+
+                // Grey tint overlay to match panel styling
+                var tintGO = new GameObject("Tint", typeof(RectTransform), typeof(Image));
+                tintGO.transform.SetParent(btnGO.transform, false);
+                tintGO.transform.SetAsFirstSibling();
+                var tintRT = tintGO.GetComponent<RectTransform>();
+                tintRT.anchorMin = Vector2.zero;
+                tintRT.anchorMax = Vector2.one;
+                tintRT.offsetMin = Vector2.zero;
+                tintRT.offsetMax = Vector2.zero;
+                var tintImg = tintGO.GetComponent<Image>();
+                tintImg.color = new Color(0f, 0f, 0f, 0.75f);
+                tintImg.raycastTarget = false;
+
                 var bRT = btnGO.GetComponent<RectTransform>();
                 bRT.anchorMin = new Vector2(0f, 0f);
                 bRT.anchorMax = new Vector2(1f, 0f);
@@ -785,6 +1034,7 @@ namespace HaldorOverhaul
             descScrollGO.GetComponent<Mask>().showMaskGraphic = false;
 
             var descTextGO = new GameObject("DescText", typeof(RectTransform));
+            descTextGO.SetActive(false);
             descTextGO.transform.SetParent(descScrollGO.transform, false);
             _itemDescText = descTextGO.AddComponent<TextMeshProUGUI>();
             if (_valheimFont != null) _itemDescText.font = _valheimFont;
@@ -802,6 +1052,7 @@ namespace HaldorOverhaul
             dtRT.anchoredPosition = Vector2.zero;
             dtRT.sizeDelta = Vector2.zero;
             descTextGO.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            descTextGO.SetActive(true);
 
             var descSB = CreateHiddenScrollbar(_middleColumn);
             _descScrollRect = descScrollGO.AddComponent<ScrollRect>();
@@ -895,7 +1146,7 @@ namespace HaldorOverhaul
         {
             if (img == null) return;
             img.sprite = null;
-            img.color = new Color(0.22f, 0.10f, 0.04f, 0.65f);
+            img.color = new Color(0f, 0f, 0f, 0.75f);
         }
 
         private Scrollbar CreateHiddenScrollbar(Transform parent)
@@ -987,6 +1238,9 @@ namespace HaldorOverhaul
             _activeTab = newTab;
             _searchFilter = "";
             if (_searchInput != null) _searchInput.text = "";
+            _activeCategoryFilter = null;
+            _joyCategoryFocusIndex = -1;
+            UpdateCategoryFilterVisuals();
             RefreshTabHighlights();
             RefreshTabPanels();
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
@@ -2141,14 +2395,24 @@ namespace HaldorOverhaul
 
         private List<BuyEntry> GetFilteredBuyEntries()
         {
-            if (string.IsNullOrEmpty(_searchFilter)) return _allBuyEntries;
-            return _allBuyEntries.Where(e => e.Name.IndexOf(_searchFilter, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+            bool hasCat    = !string.IsNullOrEmpty(_activeCategoryFilter);
+            bool hasSearch = !string.IsNullOrEmpty(_searchFilter);
+            if (!hasCat && !hasSearch) return _allBuyEntries;
+            var result = _allBuyEntries.AsEnumerable();
+            if (hasCat)    result = result.Where(e => e.Category == _activeCategoryFilter);
+            if (hasSearch) result = result.Where(e => e.Name.IndexOf(_searchFilter, StringComparison.OrdinalIgnoreCase) >= 0);
+            return result.ToList();
         }
 
         private List<SellEntry> GetFilteredSellEntries()
         {
-            if (string.IsNullOrEmpty(_searchFilter)) return _allSellEntries;
-            return _allSellEntries.Where(e => e.Name.IndexOf(_searchFilter, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+            bool hasCat    = !string.IsNullOrEmpty(_activeCategoryFilter);
+            bool hasSearch = !string.IsNullOrEmpty(_searchFilter);
+            if (!hasCat && !hasSearch) return _allSellEntries;
+            var result = _allSellEntries.AsEnumerable();
+            if (hasCat)    result = result.Where(e => e.Category == _activeCategoryFilter);
+            if (hasSearch) result = result.Where(e => e.Name.IndexOf(_searchFilter, StringComparison.OrdinalIgnoreCase) >= 0);
+            return result.ToList();
         }
 
         private int GetVisibleBuyCount()
@@ -2216,19 +2480,40 @@ namespace HaldorOverhaul
         private static string GetItemCategory(ItemDrop.ItemData item)
         {
             if (item?.m_shared == null) return "Misc";
-            string typeName = item.m_shared.m_itemType.ToString();
-            switch (typeName)
+            switch (item.m_shared.m_itemType)
             {
-                case "OneHandedWeapon": case "TwoHandedWeapon": case "Bow": return "Weapons";
-                case "Tool": return "Utility";
-                case "Shield": return "Shields";
-                case "Helmet": case "Chest": case "Legs": case "Shoulder": return "Armor";
-                case "Utility": return "Utility";
-                case "Ammo": return "Ammo";
-                case "Consumable": return "Consumables";
-                case "Trophie": return "Trophies";
-                case "Material": return "Materials";
-                default: return "Misc";
+                case ItemDrop.ItemData.ItemType.OneHandedWeapon:
+                case ItemDrop.ItemData.ItemType.TwoHandedWeapon:
+                case ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft:
+                case ItemDrop.ItemData.ItemType.Bow:
+                case ItemDrop.ItemData.ItemType.Attach_Atgeir:
+                    return "Weapons";
+                case ItemDrop.ItemData.ItemType.Shield:
+                    return "Shields";
+                case ItemDrop.ItemData.ItemType.Helmet:
+                case ItemDrop.ItemData.ItemType.Chest:
+                case ItemDrop.ItemData.ItemType.Legs:
+                case ItemDrop.ItemData.ItemType.Shoulder:
+                case ItemDrop.ItemData.ItemType.Hands:
+                    return "Armor";
+                case ItemDrop.ItemData.ItemType.Ammo:
+                case ItemDrop.ItemData.ItemType.AmmoNonEquipable:
+                    return "Ammo";
+                case ItemDrop.ItemData.ItemType.Consumable:
+                    return "Consumables";
+                case ItemDrop.ItemData.ItemType.Material:
+                    return "Materials";
+                case ItemDrop.ItemData.ItemType.Trophy:
+                    return "Trophies";
+                case ItemDrop.ItemData.ItemType.Tool:
+                case ItemDrop.ItemData.ItemType.Utility:
+                    return "Utility";
+                case ItemDrop.ItemData.ItemType.Torch:
+                case ItemDrop.ItemData.ItemType.Customization:
+                case ItemDrop.ItemData.ItemType.Fish:
+                case ItemDrop.ItemData.ItemType.Trinket:
+                default:
+                    return "Misc";
             }
         }
 
@@ -2433,6 +2718,7 @@ namespace HaldorOverhaul
         private TMP_Text CreateBankText(Transform parent, string name, string text, float fontSize, Color color)
         {
             var go = new GameObject(name, typeof(RectTransform));
+            go.SetActive(false);
             go.transform.SetParent(parent, false);
             var tmp = go.AddComponent<TextMeshProUGUI>();
             if (_valheimFont != null) tmp.font = _valheimFont;
@@ -2440,6 +2726,7 @@ namespace HaldorOverhaul
             tmp.color = color;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.text = text;
+            go.SetActive(true);
             return tmp;
         }
 

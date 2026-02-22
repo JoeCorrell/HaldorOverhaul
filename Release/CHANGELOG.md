@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.15
+- Custom UI sprites for search bar and category buttons (SearchBarBackground.png, CategoryBackground.png)
+- Fixed item category classification to use direct enum comparison instead of string matching
+- Fixed panel tinting — panels now use a clean grey tint instead of brownish sprite-based coloring
+- Fixed TMP font warnings by deferring TextMeshProUGUI initialization until font is assigned
+- Updated category button icons (bronze axe, troll leather helmet, wooden shield, stamina mead, bronze)
+- Grey tint overlay on Buy/Sell action button to match panel styling
+
 ## 1.0.14
 - Added BowsBeforeHoes mod support — 10 items (3 bows, 4 quivers, 3 arrows) added to buy and sell configs with recipe-based pricing
 - Doubled list panel scroll speed

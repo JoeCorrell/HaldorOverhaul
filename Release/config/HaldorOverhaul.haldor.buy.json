@@ -486,6 +486,48 @@
     "must_defeated_boss": "defeated_eikthyr"
   },
   {
+    "item_prefab": "BBH_BlackForest_Bow",
+    "item_quantity": 1,
+    "item_price": 242,
+    "must_defeated_boss": "defeated_eikthyr"
+  },
+  {
+    "item_prefab": "BBH_BlackForest_Quiver",
+    "item_quantity": 1,
+    "item_price": 261,
+    "must_defeated_boss": "defeated_eikthyr"
+  },
+  {
+    "item_prefab": "BBH_OdinPlus_Quiver",
+    "item_quantity": 1,
+    "item_price": 21248,
+    "must_defeated_boss": "defeated_queen"
+  },
+  {
+    "item_prefab": "BBH_PlainsLox_Quiver",
+    "item_quantity": 1,
+    "item_price": 7814,
+    "must_defeated_boss": "defeated_dragon"
+  },
+  {
+    "item_prefab": "BBH_Seeker_Bow",
+    "item_quantity": 1,
+    "item_price": 4246,
+    "must_defeated_boss": "defeated_goblinking"
+  },
+  {
+    "item_prefab": "BBH_Seeker_Quiver",
+    "item_quantity": 1,
+    "item_price": 2752,
+    "must_defeated_boss": "defeated_goblinking"
+  },
+  {
+    "item_prefab": "BBH_Surtling_Bow",
+    "item_quantity": 1,
+    "item_price": 15508,
+    "must_defeated_boss": "defeated_gdking"
+  },
+  {
     "item_prefab": "BeechSeeds",
     "item_quantity": 20,
     "item_price": 5,
@@ -2202,6 +2244,12 @@
     "must_defeated_boss": "defeated_goblinking"
   },
   {
+    "item_prefab": "MistTorchArrow",
+    "item_quantity": 20,
+    "item_price": 3865,
+    "must_defeated_boss": "defeated_queen"
+  },
+  {
     "item_prefab": "MorgenHeart",
     "item_quantity": 10,
     "item_price": 3916,
@@ -2470,6 +2518,12 @@
     "item_quantity": 1,
     "item_price": 432,
     "must_defeated_boss": "defeated_dragon"
+  },
+  {
+    "item_prefab": "SeekerArrow",
+    "item_quantity": 20,
+    "item_price": 819,
+    "must_defeated_boss": "defeated_queen"
   },
   {
     "item_prefab": "SeekerAspic",
@@ -2944,6 +2998,12 @@
     "item_quantity": 1,
     "item_price": 12,
     "must_defeated_boss": ""
+  },
+  {
+    "item_prefab": "TorchArrow",
+    "item_quantity": 20,
+    "item_price": 72,
+    "must_defeated_boss": "defeated_gdking"
   },
   {
     "item_prefab": "TorchMist",
