@@ -1075,6 +1075,64 @@ ITEM_DATABASE: Dict[str, Tuple[Biome, int, int, bool]] = {
     'CapeTest': (Biome.MEADOWS, 10, 1, True),  # Test item, sell only
 }
 
+# ============================================================================
+# MOD SUPPORT
+# Items added by mods won't appear in Jotunn docs, so we define them here.
+# Format: 'PrefabName': (Biome, base_price, stack_size, sell_only, item_type_hint)
+# item_type_hint is passed to get_item_category() to ensure correct multiplier.
+# ============================================================================
+
+ENABLED_MODS = {
+    'BowsBeforeHoes': True,  # https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/
+}
+
+MOD_DATABASES = {}
+
+# Mod item recipes — used by process_mod_items() to compute ingredient-based
+# prices the same way process_items() does for vanilla items.
+# Format: 'PrefabName': {'ingredients': [('IngredientPrefab', qty), ...], 'amount': output}
+# Ingredient prefabs must be in ITEM_DATABASE; unknowns fall back to 10/unit.
+MOD_RECIPES = {}
+
+# ─── BowsBeforeHoes by Azumatt ───────────────────────────────────────────────
+# Biome matches the mod's Trade.RequiredGlobalKey boss key.
+# base_price is a floor guarantee (same role as in ITEM_DATABASE for vanilla);
+# the recipe-derived ingredient cost typically drives the final price higher.
+# item_type_hint='Bow'  → get_item_category() returns 'bow'  (×1.1 multiplier)
+# item_type_hint='Ammo' → recipe uses ammo pricing (no divide by craft output)
+# RoundLog is a BBH-internal prefab with no DB entry; approximated as CoreWood.
+if ENABLED_MODS.get('BowsBeforeHoes'):
+    MOD_DATABASES['BowsBeforeHoes'] = {
+        # Bows
+        'BBH_BlackForest_Bow': (Biome.BLACK_FOREST, 80, 1, False, 'Bow'),
+        'BBH_Surtling_Bow':    (Biome.SWAMP,         60, 1, False, 'Bow'),
+        'BBH_Seeker_Bow':      (Biome.MISTLANDS,      80, 1, False, 'Bow'),
+        # Quivers (equippable ammo-belt utility slots)
+        'BBH_BlackForest_Quiver': (Biome.BLACK_FOREST, 80, 1, False, ''),
+        'BBH_OdinPlus_Quiver':    (Biome.ASHLANDS,      40, 1, False, ''),
+        'BBH_PlainsLox_Quiver':   (Biome.PLAINS,        60, 1, False, ''),
+        'BBH_Seeker_Quiver':      (Biome.MISTLANDS,     80, 1, False, ''),
+        # Arrows — stack 20 matches vanilla arrow bundle size
+        'TorchArrow':     (Biome.SWAMP,     5, 20, False, 'Ammo'),
+        'SeekerArrow':    (Biome.ASHLANDS,  5, 20, False, 'Ammo'),
+        'MistTorchArrow': (Biome.ASHLANDS,  5, 20, False, 'Ammo'),
+    }
+
+    # Actual crafting recipes from the BowsBeforeHoes plugin source.
+    # RoundLog (BBH internal prefab) approximated as CoreWood (same tier, similar value).
+    MOD_RECIPES.update({
+        'BBH_BlackForest_Bow':    {'ingredients': [('CoreWood', 2), ('DeerHide', 1), ('TrollHide', 1)],        'amount': 1},
+        'BBH_Surtling_Bow':       {'ingredients': [('TrophyTheElder', 1), ('SurtlingCore', 10), ('Eitr', 25)], 'amount': 1},
+        'BBH_Seeker_Bow':         {'ingredients': [('YggdrasilWood', 3), ('Carapace', 3), ('Wisp', 1)],        'amount': 1},
+        'BBH_BlackForest_Quiver': {'ingredients': [('HardAntler', 1), ('DeerHide', 3)],                        'amount': 1},
+        'BBH_OdinPlus_Quiver':    {'ingredients': [('Thunderstone', 10), ('YggdrasilWood', 3), ('FlametalNew', 2)], 'amount': 1},
+        'BBH_PlainsLox_Quiver':   {'ingredients': [('FineWood', 15), ('SerpentScale', 5), ('LoxPelt', 3)],     'amount': 1},
+        'BBH_Seeker_Quiver':      {'ingredients': [('YggdrasilWood', 1), ('Carapace', 1), ('Mandible', 4)],    'amount': 1},
+        'TorchArrow':             {'ingredients': [('Wood', 1), ('DeerHide', 2)],                              'amount': 20},
+        'SeekerArrow':            {'ingredients': [('Wood', 1), ('Mandible', 1)],                              'amount': 20},
+        'MistTorchArrow':         {'ingredients': [('Wood', 1), ('Eitr', 2)],                                  'amount': 20},
+    })
+
 # Items that should never appear (not real items, attacks, spawners, etc.)
 INVALID_PREFAB_PATTERNS = [
     # Attacks and abilities
@@ -1664,6 +1722,94 @@ def process_items(items_html: str, recipes_html: str) -> Tuple[List[ProcessedIte
     return buy_items, sell_items
 
 
+def process_mod_items(mod_databases: dict) -> Tuple[List[ProcessedItem], List[ProcessedItem]]:
+    """
+    Convert mod item databases into ProcessedItem lists using the same
+    ingredient-cost pricing logic as process_items() for vanilla items.
+
+    For each item:
+      1. Compute base_buy_price from its ITEM_DATABASE-style base_price (floor).
+      2. If a recipe exists in MOD_RECIPES, sum ingredient base costs, apply
+         CRAFTING_MARKUP, then apply biome + category multipliers (recipe_price).
+         Ammo items skip dividing by output amount, matching vanilla ammo logic.
+      3. Final buy_price = max(base_buy_price, recipe_price), capped to MAX_PRICE.
+    """
+    buy_items: List[ProcessedItem] = []
+    sell_items: List[ProcessedItem] = []
+
+    for mod_name, mod_db in mod_databases.items():
+        mod_buy_count = 0
+        mod_sell_count = 0
+
+        for prefab, data in mod_db.items():
+            biome, base_price, stack, sell_only, item_type = data
+
+            category = get_item_category(prefab, item_type)
+            category_mult = CATEGORY_MULTIPLIERS.get(category, 1.0)
+            rarity_mult = RARITY_OVERRIDES.get(prefab, 1.0)
+
+            # Floor price from the manually specified base_price
+            base_buy_price = calculate_price(base_price, biome, prefab, item_type)
+
+            # Recipe-based price (mirrors vanilla process_items logic)
+            recipe = MOD_RECIPES.get(prefab)
+            if recipe:
+                ingredient_base_cost = 0
+                found_all = True
+                for ing_prefab, ing_qty in recipe['ingredients']:
+                    if ing_prefab in ITEM_DATABASE:
+                        _, ing_base, _, _ = ITEM_DATABASE[ing_prefab]
+                        ingredient_base_cost += ing_base * ing_qty
+                    else:
+                        found_all = False
+                        ingredient_base_cost += 10 * ing_qty  # fallback for unknowns
+
+                output_amount = recipe.get('amount', 1)
+                # Ammo: price covers the full craft output batch (no per-item division).
+                # Check item_type hint since ammo prefabs here don't start with 'Arrow'.
+                is_ammo = (category == 'ammo' or item_type.lower() == 'ammo')
+                if is_ammo:
+                    recipe_base = int(ingredient_base_cost * CRAFTING_MARKUP)
+                else:
+                    recipe_base = int(ingredient_base_cost * CRAFTING_MARKUP / max(1, output_amount))
+
+                recipe_price = int(recipe_base * biome.multiplier * category_mult * rarity_mult)
+
+                if found_all:
+                    buy_price = max(base_buy_price, recipe_price)
+                else:
+                    buy_price = base_buy_price
+            else:
+                buy_price = base_buy_price
+
+            buy_price = min(MAX_PRICE, max(MIN_PRICE, buy_price))
+            sell_price = max(1, int(buy_price * SELL_MULTIPLIER))
+
+            processed = ProcessedItem(
+                prefab=prefab,
+                name=prefab,
+                item_type=item_type,
+                biome=biome,
+                buy_price=buy_price,
+                sell_price=sell_price,
+                stack=stack,
+                boss_key=biome.boss_key,
+                buyable=not sell_only,
+                sellable=True,
+            )
+
+            if processed.buyable:
+                buy_items.append(processed)
+                mod_buy_count += 1
+            if processed.sellable:
+                sell_items.append(processed)
+                mod_sell_count += 1
+
+        print(f"      [{mod_name}] {mod_buy_count} buy, {mod_sell_count} sell")
+
+    return buy_items, sell_items
+
+
 def generate_configs(buy_items: List[ProcessedItem], sell_items: List[ProcessedItem], output_dir: Path) -> Tuple[Path, Path]:
     """Generate JSON config files."""
     print("\n[6/6] Generating configs...")
@@ -1854,9 +2000,17 @@ def main():
         print(f"  {RECIPE_LIST_URL}")
         return 1
     
-    # Process items
+    # Process vanilla items
     buy_items, sell_items = process_items(items_html, recipes_html)
-    
+
+    # Process mod items
+    if MOD_DATABASES:
+        print("\n[Mods] Processing mod items...")
+        mod_buy, mod_sell = process_mod_items(MOD_DATABASES)
+        buy_items.extend(mod_buy)
+        sell_items.extend(mod_sell)
+        print(f"      Total added: {len(mod_buy)} buy, {len(mod_sell)} sell")
+
     # Determine output directory - priority:
     # 1. Command-line argument
     # 2. HALDOR_CONFIG_PATH environment variable (set by the mod)

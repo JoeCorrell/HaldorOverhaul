@@ -4,9 +4,9 @@
 
 **Transform Haldor into the ultimate merchant with full buy/sell functionality and a personal bank**
 
-[![Version](https://img.shields.io/badge/Version-1.0.13-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.14-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
 [![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#-requirements)
-[![Items](https://img.shields.io/badge/Items-580+-green?style=for-the-badge)](#)
+[![Items](https://img.shields.io/badge/Items-590+-green?style=for-the-badge)](#)
 
 ---
 
@@ -26,7 +26,7 @@
 
 ## ✨ Features
 
-Browse and buy over 580 items from Haldor, organized by category with real-time search. Sell your unwanted gear directly back to him at 30% of the buy price. Items unlock progressively as you defeat bosses, keeping the economy tied to your progression. All item lists and prices are driven by JSON config files you can edit freely, and a Python script is included to regenerate them from scratch.
+Browse and buy over 590 items from Haldor, organized by category with real-time search. Sell your unwanted gear directly back to him at 30% of the buy price. Items unlock progressively as you defeat bosses, keeping the economy tied to your progression. All item lists and prices are driven by JSON config files you can edit freely, and a Python script is included to regenerate them from scratch.
 
 The mod has full controller support. Use LB/RB to switch panels, D-Pad or left stick to navigate, A to confirm, X to toggle categories, and B to close. Everything is mapped and works seamlessly alongside the mouse.
 
@@ -37,6 +37,31 @@ The mod has full controller support. Use LB/RB to switch panels, D-Pad or left s
 Haldor acts as your personal banker. Your bank balance funds all purchases. When you buy something, the cost is deducted from the bank, and when you sell, the proceeds go straight in.
 
 To access the bank, open the shop at Haldor and click the **Bank** tab. Use **Deposit** to move coins from your inventory into the bank, and **Withdraw** to take them back out.
+
+---
+
+## 🤝 Compatible Mods
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/BowsBeforeHoes.png" alt="Bows Before Hoes" width="300"/>
+</p>
+
+**[Bows Before Hoes](https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/)** by Azumatt — Full buy and sell support for all items added by this mod. Prices are calculated from crafting recipes using the same ingredient-based system as vanilla items.
+
+| Item | Type | Biome |
+|------|------|-------|
+| BBH_BlackForest_Bow | Bow | Black Forest |
+| BBH_Surtling_Bow | Bow | Swamp |
+| BBH_Seeker_Bow | Bow | Mistlands |
+| BBH_BlackForest_Quiver | Quiver | Black Forest |
+| BBH_PlainsLox_Quiver | Quiver | Plains |
+| BBH_Seeker_Quiver | Quiver | Mistlands |
+| BBH_OdinPlus_Quiver | Quiver | Ashlands |
+| TorchArrow | Arrow (×20) | No boss required |
+| SeekerArrow | Arrow (×20) | Ashlands |
+| MistTorchArrow | Arrow (×20) | Ashlands |
+
+The prebuilt config files already include all BowsBeforeHoes items. Simply install BowsBeforeHoes alongside this mod and the items will appear in Haldor's shop automatically.
 
 ---
 

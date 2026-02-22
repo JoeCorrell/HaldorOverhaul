@@ -1,7 +1,7 @@
 {
   "name": "HaldorOverhaul",
   "author": "ProfMags",
-  "version_number": "1.0.13",
+  "version_number": "1.0.14",
   "website_url": "https://github.com/JoeCorrell/HaldorOverhaul",
   "description": "Transforms Haldor into a full merchant with buy/sell panels, 580+ items, recipe-based pricing, search filters, category tabs, and full controller support.",
   "dependencies": [

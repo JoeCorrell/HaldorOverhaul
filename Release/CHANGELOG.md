@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.14
+- Added BowsBeforeHoes mod support — 10 items (3 bows, 4 quivers, 3 arrows) added to buy and sell configs with recipe-based pricing
+- Doubled list panel scroll speed
+
 ## 1.0.13
 - Fixed standalone bank UI cursor being locked when opened with Z key
 - Fixed bank UI not registering as a store UI, causing camera and input issues

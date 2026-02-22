@@ -647,7 +647,7 @@ namespace HaldorOverhaul
             _listScrollRect.vertical = true;
             _listScrollRect.horizontal = false;
             _listScrollRect.movementType = ScrollRect.MovementType.Clamped;
-            _listScrollRect.scrollSensitivity = _scrollSensitivity;
+            _listScrollRect.scrollSensitivity = _scrollSensitivity * 2f;
             _listScrollRect.verticalScrollbar = sb;
             _listScrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
         }
