@@ -43,25 +43,12 @@ To access the bank, open the shop at Haldor and click the **Bank** tab. Use **De
 ## 🤝 Compatible Mods
 
 <p align="center">
+<a href="https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/">
 <img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/BowsBeforeHoes.png" alt="Bows Before Hoes" width="300"/>
+</a>
 </p>
 
-**[Bows Before Hoes](https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/)** by Azumatt — Full buy and sell support for all items added by this mod. Prices are calculated from crafting recipes using the same ingredient-based system as vanilla items.
-
-| Item | Type | Biome |
-|------|------|-------|
-| BBH_BlackForest_Bow | Bow | Black Forest |
-| BBH_Surtling_Bow | Bow | Swamp |
-| BBH_Seeker_Bow | Bow | Mistlands |
-| BBH_BlackForest_Quiver | Quiver | Black Forest |
-| BBH_PlainsLox_Quiver | Quiver | Plains |
-| BBH_Seeker_Quiver | Quiver | Mistlands |
-| BBH_OdinPlus_Quiver | Quiver | Ashlands |
-| TorchArrow | Arrow (×20) | No boss required |
-| SeekerArrow | Arrow (×20) | Ashlands |
-| MistTorchArrow | Arrow (×20) | Ashlands |
-
-The prebuilt config files already include all BowsBeforeHoes items. Simply install BowsBeforeHoes alongside this mod and the items will appear in Haldor's shop automatically.
+**[Bows Before Hoes](https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/)** by Azumatt — All bows, quivers, and arrows added by this mod are fully supported. Install both mods and they will appear in Haldor's shop automatically.
 
 ---
 
