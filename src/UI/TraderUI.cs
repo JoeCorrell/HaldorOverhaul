@@ -2693,6 +2693,19 @@ namespace HaldorOverhaul
             if (txt != null) { txt.gameObject.SetActive(true); txt.text = label; }
             StripButtonHints(go, txt);
 
+            // Dark tint overlay (same as buy/sell buttons)
+            var tintGO = new GameObject("Tint", typeof(RectTransform), typeof(Image));
+            tintGO.transform.SetParent(go.transform, false);
+            tintGO.transform.SetAsFirstSibling();
+            var tintRT = tintGO.GetComponent<RectTransform>();
+            tintRT.anchorMin = Vector2.zero;
+            tintRT.anchorMax = Vector2.one;
+            tintRT.offsetMin = Vector2.zero;
+            tintRT.offsetMax = Vector2.zero;
+            var tintImg = tintGO.GetComponent<Image>();
+            tintImg.color = new Color(0f, 0f, 0f, 0.75f);
+            tintImg.raycastTarget = false;
+
             var brt = go.GetComponent<RectTransform>();
             brt.anchorMin = new Vector2(0.5f, 0f);
             brt.anchorMax = new Vector2(0.5f, 0f);

@@ -9,13 +9,13 @@
     "item_prefab": "Amber",
     "item_quantity": 20,
     "item_price": 20,
-    "must_defeated_boss": "defeated_eikthyr"
+    "must_defeated_boss": ""
   },
   {
     "item_prefab": "AmberPearl",
     "item_quantity": 20,
     "item_price": 33,
-    "must_defeated_boss": "defeated_eikthyr"
+    "must_defeated_boss": ""
   },
   {
     "item_prefab": "AncientSeed",
@@ -2505,7 +2505,7 @@
     "item_prefab": "Ruby",
     "item_quantity": 20,
     "item_price": 67,
-    "must_defeated_boss": "defeated_gdking"
+    "must_defeated_boss": ""
   },
   {
     "item_prefab": "SaddleAsksvin",
@@ -2721,7 +2721,7 @@
     "item_prefab": "SilverNecklace",
     "item_quantity": 20,
     "item_price": 146,
-    "must_defeated_boss": "defeated_bonemass"
+    "must_defeated_boss": ""
   },
   {
     "item_prefab": "SilverOre",

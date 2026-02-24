@@ -7,9 +7,10 @@
     <Nullable>disable</Nullable>
     <Optimize>true</Optimize>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <!-- Output to parent folder's bin directory -->
-    <OutputPath>..\bin\$(Configuration)\$(TargetFramework)\</OutputPath>
+    <!-- Keep build artifacts under a single top-level build folder -->
+    <OutputPath>..\build\bin\$(Configuration)\$(TargetFramework)\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)\obj\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <!-- Embedded texture resources -->
@@ -77,12 +78,18 @@
   <Target Name="DeployToPlugins" AfterTargets="Build">
     <PropertyGroup>
       <PluginDir>C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\plugins\$(AssemblyName)</PluginDir>
+      <ReleaseDir>$(MSBuildProjectDirectory)\..\Release\</ReleaseDir>
     </PropertyGroup>
     <MakeDir Directories="$(PluginDir)" />
+    <MakeDir Directories="$(ReleaseDir)" />
     <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
           DestinationFolder="$(PluginDir)"
           SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+          DestinationFolder="$(ReleaseDir)"
+          SkipUnchangedFiles="true" />
     <Message Text="Deployed $(AssemblyName).dll to $(PluginDir)" Importance="high" />
+    <Message Text="Copied $(AssemblyName).dll to $(ReleaseDir)" Importance="high" />
   </Target>
 
 </Project>

@@ -1699,6 +1699,10 @@ def process_items(items_html: str, recipes_html: str) -> Tuple[List[ProcessedIte
         
         sell_price = max(1, int(buy_price * SELL_MULTIPLIER))
         boss_key = biome.boss_key
+
+        # Treasure items can be sold regardless of boss progression
+        if sell_only and prefab in ['Amber', 'AmberPearl', 'Ruby', 'SilverNecklace', 'GoldRuby']:
+            boss_key = ""
         
         processed = ProcessedItem(
             prefab=prefab,

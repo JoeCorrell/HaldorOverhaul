@@ -4,7 +4,7 @@
 
 **Transform Haldor into the ultimate merchant with full buy/sell functionality and a personal bank**
 
-[![Version](https://img.shields.io/badge/Version-1.0.14-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.18-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
 [![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#-requirements)
 [![Items](https://img.shields.io/badge/Items-590+-green?style=for-the-badge)](#)
 
@@ -48,7 +48,19 @@ To access the bank, open the shop at Haldor and click the **Bank** tab. Use **De
 </a>
 </p>
 
-**[Bows Before Hoes](https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/)** by Azumatt — All bows, quivers, and arrows added by this mod are fully supported. Install both mods and they will appear in Haldor's shop automatically.
+**[Bows Before Hoes](https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/)** by Azumatt — All bows, quivers, and arrows added by this mod are fully supported. Install both mods and they will appear in Haldor's shop automatically. All items are locked behind the same boss progression gates as their vanilla equivalents, so they unlock naturally as you defeat bosses.
+
+### Mod Conflict Warning
+
+This mod targets **Haldor specifically** by prefab name. The custom UI only intercepts interactions with Haldor — all other traders (Hildir, modded trader NPCs) continue to use the vanilla StoreGui as normal.
+
+However, **any mod that alters Haldor himself** may cause conflicts:
+
+- Mods that replace or rename Haldor's prefab
+- Mods that patch `StoreGui.Show` and swallow the call before HaldorOverhaul sees it
+- Mods that modify Haldor's inventory or dialogue in ways that interfere with the UI hooks
+
+If you experience issues (UI not opening, vanilla UI appearing instead of the custom one, or crashes when visiting Haldor), try disabling other Haldor-related mods one at a time to identify the conflict.
 
 ---
 

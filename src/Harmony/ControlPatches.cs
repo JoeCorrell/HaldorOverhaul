@@ -13,15 +13,28 @@ namespace HaldorOverhaul
         internal static TraderUI GetTraderUI() => _traderUI;
 
         /// <summary>
+        /// Returns true only when the trader being interacted with is specifically Haldor.
+        /// Checked by prefab name so any other trader mod's NPCs fall through to vanilla UI.
+        /// </summary>
+        private static bool IsHaldor(Trader trader)
+        {
+            if (trader == null) return false;
+            string prefab = Utils.GetPrefabName(trader.gameObject);
+            return string.Equals(prefab, "Haldor", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
         /// Intercept StoreGui.Show — prevent vanilla UI, show our custom UI instead.
+        /// Only fires for Haldor; all other traders use vanilla StoreGui.
         /// </summary>
         [HarmonyPatch(typeof(StoreGui), "Show")]
         [HarmonyPrefix]
         private static bool StoreGui_Show_Prefix(StoreGui __instance, Trader trader)
         {
             if (_traderUI == null) return true;
+            if (!IsHaldor(trader)) return true; // let vanilla handle every non-Haldor trader
             _traderUI.Show(trader, __instance);
-            return false; // skip vanilla StoreGui
+            return false; // skip vanilla StoreGui for Haldor
         }
 
         /// <summary>

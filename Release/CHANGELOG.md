@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.18
+- Fixed custom trader UI to only apply to Haldor — other traders (Hildir, modded NPCs) now use the vanilla StoreGui, resolving mod compatibility conflicts with any mod that adds its own traders
+
+## 1.0.17
+- ui improvements
+
+## 1.0.16
+- Removed boss progression gates from treasure sell items (Amber, AmberPearl, Ruby, SilverNecklace, GoldRuby) — players can now sell treasure to Haldor at any point in the game
+
 ## 1.0.15
 - Custom UI sprites for search bar and category buttons (SearchBarBackground.png, CategoryBackground.png)
 - Fixed item category classification to use direct enum comparison instead of string matching
