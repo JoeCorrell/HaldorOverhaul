@@ -4,7 +4,7 @@
 
 Transform Haldor into a full-service merchant with buy/sell support, progression-based item unlocks, and an integrated bank tab.
 
-[![Version](https://img.shields.io/badge/Version-1.0.18-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.19-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
 [![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#requirements)
 [![Items](https://img.shields.io/badge/Items-590+-green?style=for-the-badge)](#features)
 
@@ -47,7 +47,8 @@ Haldor can be used as a personal banker:
 
 `Deposit` moves coins from inventory into your bank balance<br/>
 `Withdraw` moves coins from bank back to inventory<br/>
-Buy and sell operations use the bank flow automatically
+Buy and sell operations use the bank flow automatically<br/>
+Bank balance is synced with HildirOverhaul when both mods are installed
 
 <hr/>
 

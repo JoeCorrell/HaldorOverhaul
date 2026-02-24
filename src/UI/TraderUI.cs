@@ -77,7 +77,6 @@ namespace HaldorOverhaul
         private Button _bankWithdrawButton;
         private GameObject _bankDepositSelected;
         private GameObject _bankWithdrawSelected;
-        private const string BankDataKey = "HaldorBank_Balance";
 
         // ── Left column: item list ──
         private RectTransform _listRoot;
@@ -2758,17 +2757,12 @@ namespace HaldorOverhaul
 
         private void LoadBankBalance()
         {
-            _bankBalance = 0;
-            var player = Player.m_localPlayer;
-            if (player != null && player.m_customData.TryGetValue(BankDataKey, out string val))
-                int.TryParse(val, out _bankBalance);
+            _bankBalance = BankBalanceStore.Read(Player.m_localPlayer);
         }
 
         private void SaveBankBalance()
         {
-            var player = Player.m_localPlayer;
-            if (player != null)
-                player.m_customData[BankDataKey] = _bankBalance.ToString();
+            BankBalanceStore.Write(Player.m_localPlayer, _bankBalance);
         }
 
         private int GetBankInventoryCoins()

@@ -49,7 +49,6 @@ namespace HaldorOverhaul
         // ── Constants ──
         const float PanelWidth = 420f;
         const float PanelHeight = 320f;
-        const string CustomDataKey = "HaldorBank_Balance";
 
         // ── Public API ──
         public bool IsVisible => _isVisible;
@@ -448,18 +447,12 @@ namespace HaldorOverhaul
 
         private void LoadBalance()
         {
-            _bankBalance = 0;
-            var player = Player.m_localPlayer;
-            if (player == null) return;
-            if (player.m_customData.TryGetValue(CustomDataKey, out string value))
-                int.TryParse(value, out _bankBalance);
+            _bankBalance = BankBalanceStore.Read(Player.m_localPlayer);
         }
 
         private void SaveBalance()
         {
-            var player = Player.m_localPlayer;
-            if (player == null) return;
-            player.m_customData[CustomDataKey] = _bankBalance.ToString();
+            BankBalanceStore.Write(Player.m_localPlayer, _bankBalance);
         }
 
         // ══════════════════════════════════════════

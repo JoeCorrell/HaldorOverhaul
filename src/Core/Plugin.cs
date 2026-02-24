@@ -10,7 +10,7 @@ namespace HaldorOverhaul
     {
         public const string PluginGUID = "com.haldor.overhaul";
         public const string PluginName = "Haldor Overhaul";
-        public const string PluginVersion = "1.0.18";
+        public const string PluginVersion = "1.0.19";
 
         private static Harmony _harmony;
         internal static ManualLogSource Log;

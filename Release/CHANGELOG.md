@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.19
+- Added shared bank balance sync with HildirOverhaul (both traders now read/write the same bank balance)
+- Internal bank persistence now migrates and mirrors legacy Haldor/Hildir keys into a shared key
+
 ## 1.0.18
 - Fixed custom trader UI so it only applies to Haldor
 - Other traders (Hildir and modded NPCs) now use the vanilla `StoreGui`

@@ -125,11 +125,8 @@ namespace HaldorOverhaul
                     var player = Player.m_localPlayer;
                     if (player == null) { args.Context.AddString("No player found."); return; }
 
-                    int previous = 0;
-                    if (player.m_customData.TryGetValue("HaldorBank_Balance", out string prev))
-                        int.TryParse(prev, out previous);
-
-                    player.m_customData["HaldorBank_Balance"] = amount.ToString();
+                    int previous = BankBalanceStore.Read(player);
+                    BankBalanceStore.Write(player, amount);
                     GetTraderUI()?.ReloadBankBalance();
 
                     ((Character)player).Message(MessageHud.MessageType.Center, $"Bank balance set to {amount:N0}");
