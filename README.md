@@ -1,46 +1,57 @@
 <div align="center">
 
-# 🛒 Haldor Trading Overhaul
+# Haldor Trading Overhaul
 
-**Transform Haldor into the ultimate merchant with full buy/sell functionality and a personal bank**
+Transform Haldor into a full-service merchant with buy/sell support, progression-based item unlocks, and an integrated bank tab.
 
 [![Version](https://img.shields.io/badge/Version-1.0.18-blue?style=for-the-badge)](https://github.com/JoeCorrell/HaldorOverhaul/releases)
-[![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#-requirements)
-[![Items](https://img.shields.io/badge/Items-590+-green?style=for-the-badge)](#)
+[![BepInEx](https://img.shields.io/badge/BepInEx-5.4.2200+-orange?style=for-the-badge)](#requirements)
+[![Items](https://img.shields.io/badge/Items-590+-green?style=for-the-badge)](#features)
 
 ---
 
+<h3>Buy</h3>
 <p align="center">
 <img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Buy.png" alt="Buy Tab" width="600"/>
 </p>
 
+<hr/>
+
+<h3>Sell</h3>
 <p align="center">
 <img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Sell.png" alt="Sell Tab" width="600"/>
 </p>
 
+<hr/>
+
+<h3>Bank</h3>
 <p align="center">
 <img src="https://raw.githubusercontent.com/JoeCorrell/HaldorOverhaul/main/Screenshots/Bank.png" alt="Bank Tab" width="600"/>
 </p>
 
 ---
 
-## ✨ Features
+## Features
 
-Browse and buy over 590 items from Haldor, organized by category with real-time search. Sell your unwanted gear directly back to him at 30% of the buy price. Items unlock progressively as you defeat bosses, keeping the economy tied to your progression. All item lists and prices are driven by JSON config files you can edit freely, and a Python script is included to regenerate them from scratch.
+Buy 590+ items from Haldor with category grouping and search<br/>
+Sell items back to Haldor with balanced sell pricing<br/>
+Progression-gated unlocks based on defeated bosses<br/>
+Full controller support for tabs, lists, and actions<br/>
+Compatible bank workflow: purchases draw from bank and selling deposits into bank
 
-The mod has full controller support. Use LB/RB to switch panels, D-Pad or left stick to navigate, A to confirm, X to toggle categories, and B to close. Everything is mapped and works seamlessly alongside the mouse.
+<hr/>
 
----
+## Bank
 
-## 🏦 Bank
+Haldor can be used as a personal banker:
 
-Haldor acts as your personal banker. Your bank balance funds all purchases. When you buy something, the cost is deducted from the bank, and when you sell, the proceeds go straight in.
+`Deposit` moves coins from inventory into your bank balance<br/>
+`Withdraw` moves coins from bank back to inventory<br/>
+Buy and sell operations use the bank flow automatically
 
-To access the bank, open the shop at Haldor and click the **Bank** tab. Use **Deposit** to move coins from your inventory into the bank, and **Withdraw** to take them back out.
+<hr/>
 
----
-
-## 🤝 Compatible Mods
+## Compatible Mods
 
 <p align="center">
 <a href="https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/">
@@ -48,54 +59,69 @@ To access the bank, open the shop at Haldor and click the **Bank** tab. Use **De
 </a>
 </p>
 
-**[Bows Before Hoes](https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/)** by Azumatt — All bows, quivers, and arrows added by this mod are fully supported. Install both mods and they will appear in Haldor's shop automatically. All items are locked behind the same boss progression gates as their vanilla equivalents, so they unlock naturally as you defeat bosses.
+**[Bows Before Hoes](https://thunderstore.io/c/valheim/p/Azumatt/BowsBeforeHoes/)** is supported. Bows, quivers, and arrows from that mod are integrated into the Haldor shop and follow the same progression model.
 
-### Mod Conflict Warning
+<hr/>
 
-This mod targets **Haldor specifically** by prefab name. The custom UI only intercepts interactions with Haldor — all other traders (Hildir, modded trader NPCs) continue to use the vanilla StoreGui as normal.
+## Compatibility Notes
 
-However, **any mod that alters Haldor himself** may cause conflicts:
+This mod targets **Haldor only** by prefab name.
 
-- Mods that replace or rename Haldor's prefab
-- Mods that patch `StoreGui.Show` and swallow the call before HaldorOverhaul sees it
-- Mods that modify Haldor's inventory or dialogue in ways that interfere with the UI hooks
+Other traders (Hildir and modded trader NPCs) continue using vanilla `StoreGui`<br/>
+Mods that replace or heavily patch Haldor may conflict<br/>
+Mods that intercept `StoreGui.Show` before this mod may block the custom UI
 
-If you experience issues (UI not opening, vanilla UI appearing instead of the custom one, or crashes when visiting Haldor), try disabling other Haldor-related mods one at a time to identify the conflict.
+If you see issues around trader UI opening, disable other Haldor-focused mods one by one to identify conflicts.
 
----
+<hr/>
 
-## 📦 Installation
+## Requirements
 
-Install BepInEx, then download the latest release and extract it to `BepInEx/plugins/HaldorOverhaul/`. Move the two config files (`HaldorOverhaul.haldor.buy.json` and `HaldorOverhaul.haldor.sell.json`) to `BepInEx/config/`, then launch Valheim.
+Valheim<br/>
+BepInEx 5.4.2200 or newer
 
----
+<hr/>
 
-## ⚙️ Configuration
+## Advanced Script
 
-Two JSON files control what Haldor buys and sells. `buy.json` lists items he sells to you; `sell.json` lists items you can sell to him. Each entry looks like this:
+`generate.py` is an advanced config generation script included in this release.
 
-```json
-{
-  "item_prefab": "SwordIron",
-  "item_quantity": 1,
-  "item_price": 4234,
-  "must_defeated_boss": "defeated_gdking"
-}
+Extracts item and recipe data from Valheim/Jotunn item sources<br/>
+Builds from prefab data while applying aggressive exclusion rules for junk entries (attacks, spawners, VFX/SFX, creatures, debug rows, and other non-item prefabs)<br/>
+Uses whitelist and validation logic to keep output focused on real tradeable items<br/>
+Balances price through multiple layers: biome progression, category multipliers, rarity overrides, recipe ingredient cost analysis, crafting markup, and sell multipliers<br/>
+Includes price sanity checks to flag suspiciously cheap or expensive results
+
+Run it manually with Python if you want to regenerate buy/sell configs:
+
+```bash
+python generate.py
 ```
 
-Leave `must_defeated_boss` empty to make an item always available. Run `generate.py` to regenerate both files from scratch using the built-in pricing system.
+Optional custom output directory:
 
----
+```bash
+python generate.py "C:/Path/To/BepInEx/config"
+```
 
-## 🙏 Credits
+<hr/>
 
-**This is my first Valheim mod! I really hope people enjoy it.**
+## Installation
 
-Inspired by [shudnal's TradersExtended](https://thunderstore.io/c/valheim/p/shudnal/TradersExtended/) · Item data sourced from the [Jotunn Library](https://valheim-modding.github.io/Jotunn/)
+Install BepInEx<br/>
+Download the latest release<br/>
+Extract to `BepInEx/plugins/HaldorOverhaul/`<br/>
+Copy `HaldorOverhaul.haldor.buy.json` and `HaldorOverhaul.haldor.sell.json` into `BepInEx/config/`<br/>
+Launch the game
+
+<hr/>
+
+## Credits
+
+Inspired by [TradersExtended](https://thunderstore.io/c/valheim/p/shudnal/TradersExtended/)<br/>
+Item and recipe source data via [Jotunn Library docs](https://valheim-modding.github.io/Jotunn/)
 
 [![GitHub](https://img.shields.io/badge/GitHub-Issues-181717?style=for-the-badge&logo=github)](https://github.com/JoeCorrell/HaldorOverhaul/issues)
 [![Discord](https://img.shields.io/badge/Discord-@profmags-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com)
-
-*Made with ❤️ for the Valheim community*
 
 </div>
