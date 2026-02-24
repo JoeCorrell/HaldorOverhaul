@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace HaldorOverhaul
+namespace TraderOverhaul
 {
     public class BankUI : MonoBehaviour
     {
@@ -162,7 +162,7 @@ namespace HaldorOverhaul
         {
             if (!ExtractAssets())
             {
-                HaldorOverhaul.Log.LogError("[BankUI] Failed to extract Valheim assets.");
+                TraderOverhaulPlugin.Log.LogError("[BankUI] Failed to extract Valheim assets.");
                 return;
             }
 
@@ -221,7 +221,7 @@ namespace HaldorOverhaul
             var content = innerPanel.transform;
 
             // ── Title ──
-            _titleText = CreateText(content, "Title", "Haldor's Bank", 26f, GoldTextColor, TextAlignmentOptions.Center);
+            _titleText = CreateText(content, "Title", "Trader's Bank", 26f, GoldTextColor, TextAlignmentOptions.Center);
             var titleRT = _titleText.GetComponent<RectTransform>();
             titleRT.anchorMin = new Vector2(0f, 1f);
             titleRT.anchorMax = new Vector2(1f, 1f);

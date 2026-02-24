@@ -1,9 +1,9 @@
 {
-  "name": "HaldorOverhaul",
+  "name": "TraderOverhaul",
   "author": "ProfMags",
-  "version_number": "1.0.19",
-  "website_url": "https://github.com/JoeCorrell/HaldorOverhaul",
-  "description": "Transforms Haldor into a full merchant with buy/sell panels, 580+ items, recipe-based pricing, search filters, category tabs, and full controller support.",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/JoeCorrell/TraderOverhaul",
+  "description": "Unified custom trader UI overhaul for Haldor, Hildir, and Bog Witch, with Haldor custom buy/sell logic preserved.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2200",
     "ValheimModding-JsonDotNET-13.0.4"

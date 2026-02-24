@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.20
+- Added a prominent Ko-fi support button under the README header divider (before screenshots)
+- Bumped package/plugin/docs version metadata to 1.0.20
+
 ## 1.0.19
 - Added shared bank balance sync with HildirOverhaul (both traders now read/write the same bank balance)
 - Internal bank persistence now migrates and mirrors legacy Haldor/Hildir keys into a shared key

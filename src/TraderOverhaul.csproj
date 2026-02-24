@@ -2,8 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <RootNamespace>HaldorOverhaul</RootNamespace>
-    <AssemblyName>HaldorOverhaul</AssemblyName>
+    <RootNamespace>TraderOverhaul</RootNamespace>
+    <AssemblyName>TraderOverhaul</AssemblyName>
     <Nullable>disable</Nullable>
     <Optimize>true</Optimize>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -15,7 +15,7 @@
   <ItemGroup>
     <!-- Embedded texture resources -->
     <EmbeddedResource Include="Resources\Textures\UI\*.png"
-      LogicalName="HaldorOverhaul.Resources.Textures.UI.%(Filename)%(Extension)" />
+      LogicalName="TraderOverhaul.Resources.Textures.UI.%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup>
     <!-- BepInEx / Harmony -->
@@ -74,18 +74,18 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Auto-deploy to BepInEx plugins folder after every build -->
-  <Target Name="DeployToPlugins" AfterTargets="Build">
+  <!-- Auto-deploy to BepInEx plugins folder and local Release folder after every build -->
+  <Target Name="DeployBuildArtifacts" AfterTargets="Build">
     <PropertyGroup>
       <PluginDir>C:\Program Files (x86)\Steam\steamapps\common\Valheim\BepInEx\plugins\$(AssemblyName)</PluginDir>
       <ReleaseDir>$(MSBuildProjectDirectory)\..\Release\</ReleaseDir>
     </PropertyGroup>
     <MakeDir Directories="$(PluginDir)" />
     <MakeDir Directories="$(ReleaseDir)" />
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+    <Copy SourceFiles="$(TargetPath)"
           DestinationFolder="$(PluginDir)"
           SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+    <Copy SourceFiles="$(TargetPath)"
           DestinationFolder="$(ReleaseDir)"
           SkipUnchangedFiles="true" />
     <Message Text="Deployed $(AssemblyName).dll to $(PluginDir)" Importance="high" />

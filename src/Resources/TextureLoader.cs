@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-namespace HaldorOverhaul
+namespace TraderOverhaul
 {
     /// <summary>
     /// Loads PNG textures embedded in the assembly as EmbeddedResources.
@@ -36,16 +36,16 @@ namespace HaldorOverhaul
 
             if (LoadImageMethod == null)
             {
-                HaldorOverhaul.Log.LogWarning("TextureLoader: ImageConversion.LoadImage not found via reflection.");
+                TraderOverhaulPlugin.Log.LogWarning("TextureLoader: ImageConversion.LoadImage not found via reflection.");
                 return null;
             }
 
-            string resourceName = $"HaldorOverhaul.Resources.Textures.UI.{name}.png";
+            string resourceName = $"TraderOverhaul.Resources.Textures.UI.{name}.png";
             using (Stream stream = ModAssembly.GetManifestResourceStream(resourceName))
             {
                 if (stream == null)
                 {
-                    HaldorOverhaul.Log.LogWarning($"TextureLoader: UI resource '{resourceName}' not found.");
+                    TraderOverhaulPlugin.Log.LogWarning($"TextureLoader: UI resource '{resourceName}' not found.");
                     return null;
                 }
 

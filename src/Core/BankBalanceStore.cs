@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace HaldorOverhaul
+namespace TraderOverhaul
 {
     internal static class BankBalanceStore
     {

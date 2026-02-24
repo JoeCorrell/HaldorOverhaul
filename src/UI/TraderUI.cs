@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace HaldorOverhaul
+namespace TraderOverhaul
 {
     public class TraderUI : MonoBehaviour
     {
@@ -16,6 +16,8 @@ namespace HaldorOverhaul
         private bool _isVisible;
         private Trader _currentTrader;
         private StoreGui _currentStoreGui;
+        private TraderKind _currentTraderKind;
+        private string _currentTraderName = "Trader";
 
         // ── Tab ──
         private int _activeTab; // 0=Buy, 1=Sell, 2=Bank
@@ -69,6 +71,7 @@ namespace HaldorOverhaul
         private int _bankBalance;
         private int _bankFocusedButton; // 0=deposit, 1=withdraw
         private GameObject _bankContentPanel;
+        private TMP_Text _bankTitleText;
         private TMP_Text _bankBalanceText;
         private TMP_Text _bankInvCoinsText;
         private TMP_Text _bankTotalText;
@@ -100,14 +103,14 @@ namespace HaldorOverhaul
         private RawImage _playerPreviewImg;
         private static readonly Vector3 PlayerSpawnPos = new Vector3(10000f, 5000f, 10000f);
 
-        // ── Right column: Haldor preview (sell tab) ──
+        // ── Right column: trader preview (sell tab) ──
         private RenderTexture _haldorPreviewRT;
         private GameObject _haldorCamGO;
         private Camera _haldorCam;
         private GameObject _haldorClone;
         private GameObject _haldorLightRig;
         private RawImage _haldorPreviewImg;
-        private static readonly Vector3 HaldorSpawnPos = new Vector3(10000f, 5000f, 10020f);
+        private static readonly Vector3 TraderSpawnPos = new Vector3(10000f, 5000f, 10020f);
 
         // ── Ambient override ──
         private Color _savedAmbientColor;
@@ -189,6 +192,8 @@ namespace HaldorOverhaul
         {
             _currentTrader = trader;
             _currentStoreGui = storeGui;
+            _currentTraderKind = TraderPatches.GetTraderKind(trader);
+            _currentTraderName = TraderIdentity.DisplayName(_currentTraderKind);
 
             if (!_uiBuilt) BuildUI();
             if (!_uiBuilt) return;
@@ -208,11 +213,12 @@ namespace HaldorOverhaul
             _lastBankInvCoinsDisplay = -1;
 
             SetupPlayerPreview();
-            SetupHaldorPreview();
+            SetupTraderPreview();
             _previewRotation = 0f;
             EnablePreviewCameras();
 
             LoadBankBalance(); // load before coin display and buy affordability checks
+            UpdateBankTitle();
 
             BuildBuyEntries();
             BuildSellEntries();
@@ -227,11 +233,13 @@ namespace HaldorOverhaul
             _isVisible = false;
             DisablePreviewCameras();
             ClearPlayerPreview();
-            ClearHaldorPreview();
+            ClearTraderPreview();
             if (_canvasGO != null)
                 _canvasGO.SetActive(false);
             _currentTrader = null;
             _currentStoreGui = null;
+            _currentTraderKind = TraderKind.Unknown;
+            _currentTraderName = "Trader";
         }
 
         // ══════════════════════════════════════════
@@ -270,7 +278,7 @@ namespace HaldorOverhaul
                 if (Input.GetKeyDown(KeyCode.E)) SwitchTab(Mathf.Min(2, _activeTab + 1));
             }
 
-            // Preview rotation (player only; Haldor camera is fixed)
+            // Preview rotation (player only; trader camera is fixed)
             UpdatePlayerPreviewRotation();
             UpdatePlayerCamera();
 
@@ -293,7 +301,7 @@ namespace HaldorOverhaul
             if (hud != null)
             {
                 if (hud.m_crosshair != null) hud.m_crosshair.color = Color.clear;
-                // Suppress the "Talk to Haldor [E]" hover text while our UI is open
+                // Suppress trader hover text while our UI is open
                 if (hud.m_hoverName != null) hud.m_hoverName.text = "";
             }
 
@@ -331,7 +339,7 @@ namespace HaldorOverhaul
         private void OnDestroy()
         {
             ClearPlayerPreview();
-            ClearHaldorPreview();
+            ClearTraderPreview();
             if (_playerCamGO != null) Destroy(_playerCamGO);
             if (_haldorCamGO != null) Destroy(_haldorCamGO);
             if (_playerPreviewRT != null) { _playerPreviewRT.Release(); Destroy(_playerPreviewRT); }
@@ -488,12 +496,12 @@ namespace HaldorOverhaul
         {
             if (!ExtractAssets())
             {
-                HaldorOverhaul.Log.LogError("[TraderUI] Failed to extract Valheim assets.");
+                TraderOverhaulPlugin.Log.LogError("[TraderUI] Failed to extract Valheim assets.");
                 return;
             }
 
             // Canvas
-            _canvasGO = new GameObject("HaldorOverhaul_Canvas");
+            _canvasGO = new GameObject("TraderOverhaul_Canvas");
             _canvasGO.transform.SetParent(transform);
             var canvas = _canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -1096,18 +1104,18 @@ namespace HaldorOverhaul
             if (charNet >= 0) mask |= (1 << charNet);
             _playerCam.cullingMask = mask;
 
-            // Haldor preview RT + camera
+            // Trader preview RT + camera
             _haldorPreviewRT = new RenderTexture(rtW, rtH, 24, RenderTextureFormat.ARGB32);
             _haldorPreviewRT.antiAliasing = 4;
             _haldorPreviewRT.filterMode = FilterMode.Trilinear;
 
-            _haldorCamGO = new GameObject("TraderUI_HaldorCam");
+            _haldorCamGO = new GameObject("TraderUI_TraderCam");
             DontDestroyOnLoad(_haldorCamGO);
             _haldorCam = _haldorCamGO.AddComponent<Camera>();
             _haldorCam.targetTexture = _haldorPreviewRT;
             _haldorCam.clearFlags = CameraClearFlags.SolidColor;
             _haldorCam.backgroundColor = new Color(0f, 0f, 0f, 0f);
-            _haldorCam.fieldOfView = 30f;
+            _haldorCam.fieldOfView = TraderIdentity.GetPreviewProfile(TraderKind.Unknown).CameraFov;
             _haldorCam.nearClipPlane = 0.1f;
             _haldorCam.farClipPlane = 10f;
             _haldorCam.depth = -2;
@@ -1125,8 +1133,8 @@ namespace HaldorOverhaul
             _playerPreviewImg.color = Color.white;
             _playerPreviewImg.raycastTarget = false;
 
-            // Haldor RawImage
-            var haldorImgGO = new GameObject("HaldorPreview", typeof(RectTransform));
+            // Trader RawImage
+            var haldorImgGO = new GameObject("TraderPreview", typeof(RectTransform));
             haldorImgGO.transform.SetParent(_rightColumn, false);
             var hRT = haldorImgGO.GetComponent<RectTransform>();
             hRT.anchorMin = Vector2.zero; hRT.anchorMax = Vector2.one;
@@ -1295,9 +1303,22 @@ namespace HaldorOverhaul
         private void BuildBuyEntries()
         {
             _allBuyEntries.Clear();
+
+            // Hildir/Bog Witch always keep their vanilla stock, even if not listed in config.
+            if (TraderIdentity.KeepsVanillaBuyStock(_currentTraderKind))
+            {
+                AddVanillaTraderBuyEntries();
+            }
+
+            // All traders consume the shared buy config; config entries override duplicate vanilla entries.
+            AddConfiguredBuyEntries();
+        }
+
+        private void AddConfiguredBuyEntries()
+        {
             if (ObjectDB.instance == null) return;
 
-            foreach (var entry in ConfigLoader.BuyEntries)
+            foreach (var entry in ConfigLoader.GetBuyEntries())
             {
                 if (string.IsNullOrEmpty(entry.prefab)) continue;
                 if (!HasGlobalKey(entry.requiredGlobalKey)) continue;
@@ -1308,22 +1329,72 @@ namespace HaldorOverhaul
                 var drop = prefab.GetComponent<ItemDrop>();
                 if (drop == null || drop.m_itemData == null) continue;
 
-                string name = Localize(drop.m_itemData.m_shared.m_name);
+                string itemName = Localize(drop.m_itemData.m_shared.m_name);
                 string desc = Localize(drop.m_itemData.m_shared.m_description);
                 Sprite icon = null;
                 try { icon = drop.m_itemData.GetIcon(); } catch { }
 
-                _allBuyEntries.Add(new BuyEntry
+                UpsertBuyEntry(new BuyEntry
                 {
                     PrefabName = entry.prefab,
-                    Name = name,
+                    Name = itemName,
                     Description = desc,
-                    Price = entry.price,
-                    Stack = entry.stack,
+                    Price = Mathf.Max(0, entry.price),
+                    Stack = Mathf.Max(1, entry.stack),
                     Category = GetItemCategory(drop.m_itemData),
                     Icon = icon
-                });
+                }, overwriteExisting: true);
             }
+        }
+
+        private void AddVanillaTraderBuyEntries()
+        {
+            if (_currentTrader == null || _currentTrader.m_items == null) return;
+
+            foreach (var trade in _currentTrader.m_items)
+            {
+                if (trade == null || trade.m_prefab == null || trade.m_prefab.m_itemData == null) continue;
+                if (!HasGlobalKey(trade.m_requiredGlobalKey)) continue;
+
+                var drop = trade.m_prefab;
+                string prefabName = drop.gameObject != null ? drop.gameObject.name : null;
+                if (string.IsNullOrEmpty(prefabName)) continue;
+                if (prefabName.EndsWith("(Clone)", StringComparison.Ordinal))
+                    prefabName = prefabName.Replace("(Clone)", "").Trim();
+
+                string itemName = Localize(drop.m_itemData.m_shared.m_name);
+                string desc = Localize(drop.m_itemData.m_shared.m_description);
+                Sprite icon = null;
+                try { icon = drop.m_itemData.GetIcon(); } catch { }
+
+                UpsertBuyEntry(new BuyEntry
+                {
+                    PrefabName = prefabName,
+                    Name = itemName,
+                    Description = desc,
+                    Price = Mathf.Max(0, trade.m_price),
+                    Stack = Mathf.Max(1, trade.m_stack),
+                    Category = GetItemCategory(drop.m_itemData),
+                    Icon = icon
+                }, overwriteExisting: false);
+            }
+        }
+
+        private void UpsertBuyEntry(BuyEntry entry, bool overwriteExisting)
+        {
+            if (entry == null || string.IsNullOrEmpty(entry.PrefabName)) return;
+
+            int idx = _allBuyEntries.FindIndex(e =>
+                string.Equals(e.PrefabName, entry.PrefabName, StringComparison.OrdinalIgnoreCase));
+
+            if (idx < 0)
+            {
+                _allBuyEntries.Add(entry);
+                return;
+            }
+
+            if (overwriteExisting)
+                _allBuyEntries[idx] = entry;
         }
 
         private void BuildSellEntries()
@@ -1337,7 +1408,7 @@ namespace HaldorOverhaul
             if (inv == null) return;
 
             string coinName = _currentStoreGui?.m_coinPrefab?.m_itemData?.m_shared?.m_name;
-            var sellByPrefab = ConfigLoader.SellEntries
+            var sellByPrefab = ConfigLoader.GetSellEntries()
                 .Where(e => !string.IsNullOrEmpty(e.prefab))
                 .GroupBy(e => e.prefab, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
@@ -2268,16 +2339,20 @@ namespace HaldorOverhaul
         }
 
         // ══════════════════════════════════════════
-        //  HALDOR PREVIEW
-        // ══════════════════════════════════════════
-
-        private void SetupHaldorPreview()
+        //  TRADER PREVIEW
+        // ══════════════════════════════════════════        
+        private void SetupTraderPreview()
         {
-            ClearHaldorPreview();
+            ClearTraderPreview();
             if (_currentTrader == null) return;
 
+            TraderPreviewProfile preview = TraderIdentity.GetPreviewProfile(_currentTraderKind);
+            Vector3 spawnPos = TraderSpawnPos + preview.SpawnOffset;
+            Vector3 center = TraderSpawnPos + preview.CenterOffset;
+            if (_haldorCam != null) _haldorCam.fieldOfView = preview.CameraFov;
+
             ZNetView.m_forceDisableInit = true;
-            try { _haldorClone = Instantiate(_currentTrader.gameObject, HaldorSpawnPos, Quaternion.identity); }
+            try { _haldorClone = Instantiate(_currentTrader.gameObject, spawnPos, Quaternion.identity); }
             finally { ZNetView.m_forceDisableInit = false; }
 
             var rb = _haldorClone.GetComponent<Rigidbody>();
@@ -2286,31 +2361,42 @@ namespace HaldorOverhaul
             foreach (var mb in _haldorClone.GetComponentsInChildren<MonoBehaviour>(true))
                 mb.enabled = false;
 
-            // Force Haldor into standing idle — same bool the real Trader script uses
-            var haldorAnim = _haldorClone.GetComponentInChildren<Animator>();
-            if (haldorAnim != null)
+            var traderAnim = _haldorClone.GetComponentInChildren<Animator>();
+            if (traderAnim != null)
             {
-                haldorAnim.SetBool("Stand", true);
-                haldorAnim.Update(0.001f);
+                SetAnimatorBoolIfPresent(traderAnim, "Stand", true);
+                SetAnimatorBoolIfPresent(traderAnim, "Sit", false);
+                SetAnimatorBoolIfPresent(traderAnim, "Sitting", false);
+                traderAnim.Update(preview.AnimatorUpdateDelta);
             }
 
-            // Face toward camera (180° so Haldor faces +Z = toward the camera)
-            _haldorClone.transform.rotation = Quaternion.Euler(0, 180, 0);
+            _haldorClone.transform.rotation = preview.Rotation;
 
             int charLayer = LayerMask.NameToLayer("character");
             if (charLayer < 0) charLayer = 9;
             foreach (var t in _haldorClone.GetComponentsInChildren<Transform>(true))
                 t.gameObject.layer = charLayer;
 
-            SetupLightRig(ref _haldorLightRig, HaldorSpawnPos);
-
-            // Fixed camera directly in front of Haldor — no rotation
-            Vector3 center = HaldorSpawnPos + Vector3.up * 0.9f;
-            _haldorCamGO.transform.position = center + new Vector3(0f, 0.2f, 4.5f);
+            SetupLightRig(ref _haldorLightRig, spawnPos);
+            _haldorCamGO.transform.position = center + preview.CameraOffset;
             _haldorCamGO.transform.LookAt(center);
         }
 
-        private void ClearHaldorPreview()
+        private static void SetAnimatorBoolIfPresent(Animator animator, string name, bool value)
+        {
+            if (animator == null || string.IsNullOrEmpty(name)) return;
+            foreach (var param in animator.parameters)
+            {
+                if (param.type == AnimatorControllerParameterType.Bool &&
+                    string.Equals(param.name, name, StringComparison.Ordinal))
+                {
+                    animator.SetBool(name, value);
+                    return;
+                }
+            }
+        }
+
+        private void ClearTraderPreview()
         {
             if (_haldorLightRig != null) { Destroy(_haldorLightRig); _haldorLightRig = null; }
             if (_haldorClone != null) { Destroy(_haldorClone); _haldorClone = null; }
@@ -2614,8 +2700,8 @@ namespace HaldorOverhaul
             var p = _bankContentPanel.transform;
 
             // ── Title ──
-            var title = CreateBankText(p, "BankTitle", "Haldor's Bank", 28f, GoldTextColor);
-            var titleRT = title.GetComponent<RectTransform>();
+            _bankTitleText = CreateBankText(p, "BankTitle", "Trader's Bank", 28f, GoldTextColor);
+            var titleRT = _bankTitleText.GetComponent<RectTransform>();
             titleRT.anchorMin = new Vector2(0f, 1f); titleRT.anchorMax = new Vector2(1f, 1f);
             titleRT.pivot = new Vector2(0.5f, 1f);
             titleRT.sizeDelta = new Vector2(0f, 38f);
@@ -2669,6 +2755,7 @@ namespace HaldorOverhaul
             stRT.sizeDelta = new Vector2(0f, 24f);
             stRT.anchoredPosition = new Vector2(0f, btnH + 20f);
 
+            UpdateBankTitle();
             _bankContentPanel.SetActive(false);
         }
 
@@ -2753,6 +2840,12 @@ namespace HaldorOverhaul
             srt.sizeDelta = new Vector2(0f, 2f);
             srt.anchoredPosition = new Vector2(0f, yPos);
             sep.GetComponent<Image>().color = new Color(GoldColor.r, GoldColor.g, GoldColor.b, 0.40f);
+        }
+
+        private void UpdateBankTitle()
+        {
+            if (_bankTitleText == null) return;
+            _bankTitleText.text = $"{_currentTraderName}'s Bank";
         }
 
         private void LoadBankBalance()

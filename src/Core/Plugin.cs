@@ -3,14 +3,14 @@ using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 
-namespace HaldorOverhaul
+namespace TraderOverhaul
 {
     [BepInPlugin(PluginGUID, PluginName, PluginVersion)]
-    public class HaldorOverhaul : BaseUnityPlugin
+    public class TraderOverhaulPlugin : BaseUnityPlugin
     {
-        public const string PluginGUID = "com.haldor.overhaul";
-        public const string PluginName = "Haldor Overhaul";
-        public const string PluginVersion = "1.0.19";
+        public const string PluginGUID = "com.profmags.traderoverhaul";
+        public const string PluginName = "Trader Overhaul";
+        public const string PluginVersion = "1.0.0";
 
         private static Harmony _harmony;
         internal static ManualLogSource Log;

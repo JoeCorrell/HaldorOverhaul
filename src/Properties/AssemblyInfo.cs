@@ -1,10 +1,10 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("Haldor Overhaul")]
-[assembly: AssemblyDescription("Custom buy/sell trading for Haldor")]
+[assembly: AssemblyTitle("Trader Overhaul")]
+[assembly: AssemblyDescription("Unified trader overhaul for Haldor, Hildir, and Bog Witch")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("HaldorOverhaul")]
+[assembly: AssemblyProduct("TraderOverhaul")]
 [assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: ComVisible(false)]

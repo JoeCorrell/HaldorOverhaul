@@ -1831,7 +1831,7 @@ def generate_configs(buy_items: List[ProcessedItem], sell_items: List[ProcessedI
         "must_defeated_boss": i.boss_key
     } for i in buy_items]
     
-    buy_path = output_dir / "HaldorOverhaul.haldor.buy.json"
+    buy_path = output_dir / "TraderOverhaul.buy.json"
     with open(buy_path, 'w') as f:
         json.dump(buy_cfg, f, indent=2)
     print(f"      Buy: {buy_path} ({len(buy_cfg)} items)")
@@ -1844,7 +1844,7 @@ def generate_configs(buy_items: List[ProcessedItem], sell_items: List[ProcessedI
         "must_defeated_boss": i.boss_key
     } for i in sell_items]
     
-    sell_path = output_dir / "HaldorOverhaul.haldor.sell.json"
+    sell_path = output_dir / "TraderOverhaul.sell.json"
     with open(sell_path, 'w') as f:
         json.dump(sell_cfg, f, indent=2)
     print(f"      Sell: {sell_path} ({len(sell_cfg)} items)")
@@ -2029,7 +2029,7 @@ def main():
         output_dir = Path(sys.argv[1])
         print(f"\nUsing output from argument: {output_dir}")
     
-    # Check environment variable (set by HaldorOverhaul mod)
+    # Check environment variable (set by TraderOverhaul mod)
     if not output_dir:
         env_path = os.environ.get('HALDOR_CONFIG_PATH')
         if env_path:
